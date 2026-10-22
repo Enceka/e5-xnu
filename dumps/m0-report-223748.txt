@@ -1,0 +1,7 @@
+[    5.274481][T264@C6] sprd_wdh: func_addr = 0xffffffc00273bce0 , pdg = 0x0 level = 0x0
+[    5.282220][T264@C6] sprd_wdh: func_addr = 0xffffffc00273bce8 , pdg = 0x5800008284b001 level = 0x1
+[    5.291132][T264@C6] sprd_wdh: func_addr = 0x7a73bcf0 , pdg = 0x0 level = 0x2
+[ 1113.986746][ T1@C0] sysrq: Kill All Tasks
+[ 1113.993065][ T1@C0] sysrq: Changing Loglevel
+[ 1113.997309][ T1@C0] sysrq: Loglevel set to 1
+[ 1114.941822][ T1@C0] reboot: Restarting system with command 'shell'

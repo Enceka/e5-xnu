@@ -17,6 +17,8 @@
 | PSCI | 0.2，副核全部 OFF | `PSCI_VERSION = 0x10000` |
 | 计数器频率 | 26MHz，与 sprd timer 一致 | `CNTFRQ_EL0 = 26000000` |
 | UART1 能否发字节 | 能，FIFO 确实在排空 | `LSR = 0x1b63`、2536 字节全被接收 |
+| `lcd_base=0xbe000000` 是否可写 | **可写**，读回 `0xa5a5a5a5` | `dumps/m0-report-fb.txt` |
+| PSCI `SYSTEM_RESET` 能否复位 | **不能**，SMC 不返回（挂死） | 同上，见第十一节 |
 | 副核能否拉起 | **未解决**，第一次 `CPU_ON` 就把系统打进 LK panic 重启循环 | 见第五节 |
 
 ## 一、实验装置
@@ -183,3 +185,45 @@ adb reboot
 # 约 8-10 分钟后设备回滚到 Android
 adb root && adb exec-out "cat /sys/fs/pstore/console-ramoops-0"
 ```
+
+## 十一、帧缓冲与复位路径（第二轮实测）
+
+### 11.1 `0xbe000000` 帧缓冲可写
+
+`probe_fb()` 先读-改-写首字再恢复，确认这块内存在 LK 交接后仍然可访问：
+
+```
+framebuffer 0xbe000000 (lcd_base from cmdline):
+    first word before = 0xffdeffde
+    read back after write = 0xa5a5a5a5
+    writable = 0x1
+  painted magenta + 8 checker squares, holding 120s
+  hold done
+```
+
+`0xffdeffde` 是 LK 走后留在缓冲里的内容。随后整屏刷品红 `0xffff00ff` 并在左上角画 8 个黑白格子，用 `CNTVCT_EL0` 忙等 120 秒。
+**「写进去」已经证实；「有没有真的被 DPU 扫描出来」要靠人眼看面板**——这是 M1 能否直接复用 LK 留下的 framebuffer 当控制台的关键，也是本项目唯一可能的人眼可见输出（UART1 没有物理探针）。
+
+### 11.2 复位路径全部不可用，只能等 LK 自己的看门狗
+
+试过两条快路径，都失败：
+
+1. **PSCI `SYSTEM_RESET`（`0x84000009`）**：SMC 不返回，CPU 直接挂死。报告能跑到
+   `===== M0-E5-EL1-DONE =====` 和 `reset attempts:`，然后没有下文。
+2. **AP 看门狗（`sprd,wdt-r2p0-fiq`，`0x641e0000`）**：连**读**都会挂死总线。
+   DT 里 `aon` 的 `ranges = <0 0 0x64000000 0x01016000>`，`watchdog@1e0000` 落在这个窗口里，
+   但 `probe_wdt()` 一读 `0x641e0000` 整机就停住，报告在 PSCI 一节之后直接截断
+   （`dumps/m0-report-wdt.txt`，3224B）。原因是 AON 这组外设的时钟没开，
+   访问被门控的寄存器会**卡住 AXI 总线**而不是产生一个可以处理的异常。
+
+结论：**M0 阶段没有快速复位手段**，每轮实验结束后由 LK 自己的看门狗在约 5.5 分钟后复位回 Android。
+一次「刷入 → 重启 → 取报告」约 6 分钟，这决定了后续迭代节奏。
+若将来要提速，正确顺序是先通过时钟控制器打开 AON 的 `enable` 时钟再碰 `0x641e0000`，
+而不是直接读写。
+
+### 11.3 交付的可复用工具
+
+- `tools/e5-misc.py`：ABC 槽位记录编解码，能逐字节复现原厂与 Linux 试验的两条真实记录。
+- `tools/e5-cycle.sh flash|collect`：一轮迭代，刻意拆成两半以避开 5 分钟的工具超时；
+  写入 `boot_b` 用 `dd bs=4096 seek=1`（kernel 区从 `0x1000` 开始）。
+- `boot/m0/m0.c` 的编译期开关：`-DM0_FB` 打开帧缓冲探测，`-DM0_SMP` 打开副核探测（默认都关）。

@@ -34,6 +34,8 @@ typedef unsigned long u64;
 #define PRZ_SIG 0x43474244UL
 #define DMESG_ZONE 0xfff80000UL
 #define CONSOLE_ZONE 0xfffb0000UL
+#define FB_BASE 0xbe000000UL
+#define FB_BYTES (480UL * 320UL * 4UL)
 #define PRZ_HDR 12
 
 static inline u16 rd16(u64 a) { return *(volatile u16 *)a; }
@@ -238,6 +240,7 @@ __asm__ volatile("smc #0"
 return r0;
 }
 
+#ifdef M0_SMP
 static u64 psci_call3(u64 fn, u64 a1, u64 a2, u64 a3)
 {
 register u64 r0 __asm__("x0") = fn;
@@ -252,10 +255,7 @@ __asm__ volatile("smc #0"
 return r0;
 }
 
-static void psci_reset(void)
-{
-(void)psci_call(0x84000009UL, 0, 0);
-}
+#endif /* M0_SMP */
 
 /* LK's EL2 vectors are still live, so a deliberate fault makes LK print our
  * registers and reboot the board for us. */
@@ -266,7 +266,9 @@ for (;;)
 __asm__ volatile("wfe");
 }
 
+#ifdef M0_SMP
 static u64 psci_call3(u64 fn, u64 a1, u64 a2, u64 a3);
+#endif
 
 extern char sec_entry[];
 
@@ -484,6 +486,7 @@ sync_report();
 }
 }
 
+#ifdef M0_SMP
 static void probe_smp(void)
 {
 static const u64 aff[] = {0x1, 0x2, 0x3, 0x4, 0x5, 0x100, 0x101};
@@ -522,6 +525,8 @@ continue;
 }
 }
 
+#endif /* M0_SMP */
+
 static void probe_uart(void)
 {
 o_puts("UART1 0x20210000:\n");
@@ -529,6 +534,115 @@ field("LSR", rd32(UART1_BASE + UART_LSR));
 field("STS1 (TX/RX fifo counts)", rd32(UART1_BASE + UART_STS1));
 dec_field("bytes accepted", uart_sent);
 dec_field("still draining", uart_ok);
+}
+
+
+#ifdef M0_FB
+/* ---------- framebuffer probe ----------
+ * LK passes lcd_base=0xbe000000 lcd_size=480x320 on the kernel command line, i.e.
+ * the splash framebuffer lives there.  If the DPU is still scanning that buffer
+ * out when LK jumps to us, writing pixels gives us a console that needs no
+ * soldering iron.  We cannot detect that from software, so this only paints a
+ * recognisable pattern and holds it long enough for a human to look at the panel.
+ */
+static void probe_fb(void)
+{
+u32 i, before, after;
+u64 bad = 0;
+
+o_puts("framebuffer 0xbe000000 (lcd_base from cmdline):\n");
+before = rd32(FB_BASE);
+wr32(FB_BASE, 0xa5a5a5a5UL);
+after = rd32(FB_BASE);
+field("  first word before", before);
+field("  read back after write", after);
+if (after != 0xa5a5a5a5UL)
+bad = 1;
+wr32(FB_BASE, before);
+field("  writable", bad ? 0 : 1);
+
+if (bad == 0) {
+/* solid magenta, then a black/white checker band so we can tell whether the
+   panel is really showing this buffer and whether the stride is 480*4 */
+for (i = 0; i < FB_BYTES / 4; i += 4) {
+wr32(FB_BASE + (u64)i * 4, 0xffff00ffUL);
+}
+for (i = 0; i < 8; i++) {
+u64 y = 40 + i * 20;
+u64 x = 40 + i * 40;
+u32 c = (i & 1) ? 0xffffffffUL : 0xff000000UL;
+wr32(FB_BASE + y * 480UL * 4 + x * 4, c);
+wr32(FB_BASE + y * 480UL * 4 + (x + 20) * 4, c);
+wr32(FB_BASE + (y + 10) * 480UL * 4 + x * 4, c);
+wr32(FB_BASE + (y + 10) * 480UL * 4 + (x + 20) * 4, c);
+}
+o_puts("  painted magenta + 8 checker squares, holding 120s\n");
+sync_report();
+/* ~120s at 26MHz: hold long enough that a human can be asked to look */
+{
+u64 start = rd_cntvct();
+while (rd_cntvct() - start < 26000000UL * 120UL) {
+__asm__ volatile("yield");
+}
+}
+o_puts("  hold done\n");
+}
+}
+
+#endif /* M0_FB */
+
+/* ---------- AP watchdog (sprd,wdt-r2p0-fiq at 0x641e0000) ---------- */
+
+#define WDT_BASE 0x641e0000UL
+#define WDT_LOAD_LOW 0x00
+#define WDT_LOAD_HIGH 0x04
+#define WDT_CTRL 0x08
+#define WDT_INT_CLR 0x0c
+#define WDT_INT_RAW 0x10
+#define WDT_INT_MSK 0x14
+#define WDT_CNT_LOW 0x18
+#define WDT_LOCK 0x20
+#define WDT_UNLOCK_KEY 0xe551
+
+static void probe_wdt(void)
+{
+u32 lock, ctrl, raw, msk, c0, c1;
+
+o_puts("AP watchdog 0x641e0000 (sprd,wdt-r2p0-fiq, DT timeout-sec 12):\n");
+lock = rd32(WDT_BASE + WDT_LOCK);
+ctrl = rd32(WDT_BASE + WDT_CTRL);
+raw = rd32(WDT_BASE + WDT_INT_RAW);
+msk = rd32(WDT_BASE + WDT_INT_MSK);
+c0 = rd32(WDT_BASE + WDT_CNT_LOW);
+c1 = rd32(WDT_BASE + WDT_CNT_LOW);
+field("  LOCK", lock);
+field("  CTRL", ctrl);
+field("  INT_RAW", raw);
+field("  INT_MSK", msk);
+field("  CNT_LOW t0", c0);
+field("  CNT_LOW t1", c1);
+field("  counting", (c0 == c1) ? 0 : 1);
+field("  last reset was watchdog", (raw & 0x8UL) ? 1 : 0);
+}
+
+/* Ask the AP watchdog to reset us within a fraction of a second.
+ * psci SYSTEM_RESET does not seem to work on this firmware and the fallback
+ * path (LK's own watchdog) takes about five and a half minutes, which makes
+ * every experiment needlessly slow.  If the watchdog clock is off this simply
+ * spins and we end up on the slow path anyway. */
+static void wdt_reset(void)
+{
+o_puts("forcing AP watchdog reset:\n");
+wr32(WDT_BASE + WDT_LOCK, WDT_UNLOCK_KEY);
+wr32(WDT_BASE + WDT_INT_CLR, 0x9);
+wr32(WDT_BASE + WDT_LOAD_LOW, 0x20);
+wr32(WDT_BASE + WDT_LOAD_HIGH, 0x0);
+wr32(WDT_BASE + WDT_CTRL, 0xb);
+field("  CTRL after enable", rd32(WDT_BASE + WDT_CTRL));
+field("  INT_RAW after enable", rd32(WDT_BASE + WDT_INT_RAW));
+for (;;) {
+__asm__ volatile("yield");
+}
 }
 
 /* ---------- main ---------- */
@@ -552,7 +666,13 @@ field("GICD_TYPER read at EL1", rd32(GICD_BASE + GICD_TYPER));
 o_puts("===== M0-E5-EL1-DONE =====\n");
 sync_report();
 
-psci_reset();
+o_puts("reset attempts:\n");
+sync_report();
+{
+u64 rc = psci_call(0x84000009UL, 0, 0);
+field("  SYSTEM_RESET rc (reached only if it did not reset)", rc);
+}
+wdt_reset();
 die();
 }
 
@@ -628,8 +748,18 @@ line("x0 is not a RAM address, skipping FDT probe");
 probe_gic();
 probe_emmc();
 probe_psci();
+probe_wdt();
+#ifdef M0_SMP
 probe_smp();
+#else
+o_puts("SMP probe disabled (build with -DM0_SMP to enable; it hung the SoC)\n");
+#endif
 probe_uart();
+#ifdef M0_FB
+probe_fb();
+#else
+o_puts("framebuffer probe disabled (build with -DM0_FB to enable)\n");
+#endif
 
 o_puts("===== M0-E5-END (still at EL2) =====\n");
 sync_report();
