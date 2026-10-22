@@ -1,0 +1,516 @@
+c wlan wlan0: sc2355_dump_survey, idx 0
+[16398.485749] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16404.502283] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16404.507339] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16410.524223] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16410.529289] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16416.546412] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16416.551481] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16422.568191] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16422.573255] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16428.589673] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16428.594730] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16434.611735] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16434.616825] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16440.632251] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16440.637353] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16446.654746] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16446.659909] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16450.566092] sipa 25220000.sipa: sipa overflow on ep:1 evt = 0x10000
+[16452.676128] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16452.681253] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16458.697437] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16458.702521] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16464.719357] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16464.724451] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16470.742549] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16470.747644] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16476.764897] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16476.769984] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16482.785537] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16482.790597] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16488.808359] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16488.813477] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16494.829565] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16494.834656] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16500.850593] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16500.855684] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16506.872779] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16506.877881] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16512.894713] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16512.899839] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16518.917510] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16518.922621] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16524.939582] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16524.944682] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16530.960534] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16530.965615] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16536.982429] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16536.987484] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16543.004822] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16543.009891] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16549.027151] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16549.032210] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16555.049728] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16555.054785] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16561.071450] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16561.076518] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16567.093982] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16567.099046] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16573.116999] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16573.122066] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16579.138526] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16579.143584] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16579.966340] sipa 25220000.sipa: sipa overflow on ep:1 evt = 0x10000
+[16585.162124] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16585.167178] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16591.184768] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16591.189849] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16597.206940] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16597.212029] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16603.227552] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16603.232648] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16609.250109] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16609.255191] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16615.270648] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16615.275745] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16621.293374] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16621.298487] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16627.314600] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16627.319696] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16633.336875] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16633.341971] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16639.360349] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16639.365466] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16645.382667] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16645.387759] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16651.405438] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16651.410537] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16657.426912] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16657.432019] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16663.449019] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16663.454116] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16669.470631] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16669.475723] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16675.493717] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16675.498801] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16681.516182] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16681.521280] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16687.537265] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16687.542357] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16693.558605] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16693.563699] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16699.580344] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16699.585397] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16702.307875] sipa 25220000.sipa: sipa overflow on ep:1 evt = 0x10000
+[16705.602684] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16705.607743] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16711.624341] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16711.629402] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16717.645058] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16717.650131] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16723.665349] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16723.670407] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16729.685920] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16729.690985] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16735.707905] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16735.712995] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16741.720709] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16741.725797] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16743.110809] sipa 25220000.sipa: task fill_recv 1
+[16743.115346] sipa 25220000.sipa: thread prepare suspend err
+[16747.743105] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16747.748205] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16753.764467] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16753.769565] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16759.785504] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16759.790616] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16765.807599] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16765.812700] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16771.829073] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16771.834178] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16777.850520] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16777.855620] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16783.872773] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16783.877869] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16789.894905] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16789.900011] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16795.917062] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16795.922164] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16801.937567] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16801.942681] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16807.959851] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16807.964906] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16813.503947] sipa 25220000.sipa: sipa overflow on ep:1 evt = 0x10000
+[16813.982147] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16813.987207] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16820.004428] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16820.009541] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16826.027646] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16826.032758] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16832.049812] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16832.054914] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16838.072921] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16838.078040] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16844.094447] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16844.099543] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16850.117617] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16850.122726] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16856.139901] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16856.145020] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16862.162490] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16862.167585] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16868.184940] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16868.190054] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16874.205860] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16874.210974] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16880.220448] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16880.225546] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16886.242455] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16886.247550] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16892.255607] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16892.260690] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16898.268325] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16898.273414] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16904.281369] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16904.286425] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16910.303522] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16910.308585] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16916.326468] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16916.331549] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16922.348352] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16922.353409] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16928.369912] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16928.374976] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16934.391565] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16934.396623] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16936.920675] sipa 25220000.sipa: sipa overflow on ep:1 evt = 0x10000
+[16940.413776] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16940.418859] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16946.436134] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16946.441203] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16952.458058] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16952.463154] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16958.480054] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16958.485164] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16964.502468] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16964.507579] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16970.517197] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16970.522302] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16976.538101] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16976.543179] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16982.560986] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16982.566082] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16988.582353] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16988.587438] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[16994.596481] misc wlan wlan0: sc2355_dump_survey, idx 0
+[16994.601553] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17000.618362] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17000.623449] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17006.641609] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17006.646714] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17012.663151] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17012.668265] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17018.685096] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17018.690206] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17024.706137] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17024.711213] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17030.729868] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17030.734993] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17036.752633] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17036.757728] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17042.775118] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17042.780238] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17045.720705] sipa 25220000.sipa: sipa overflow on ep:1 evt = 0x10000
+[17048.796766] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17048.801849] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17054.810346] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17054.815432] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17060.832770] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17060.837860] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17066.853797] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17066.858890] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17072.876033] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17072.881146] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17078.897825] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17078.902915] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17084.920243] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17084.925334] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17090.940872] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17090.945959] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17096.962215] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17096.967335] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17102.984453] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17102.989564] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17109.007329] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17109.012434] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17115.030004] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17115.035095] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17121.052271] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17121.057382] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17127.075155] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17127.080212] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17133.096651] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17133.101709] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17139.118214] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17139.123303] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17145.140419] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17145.145510] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17151.162442] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17151.167558] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17157.185374] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17157.190506] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17163.208880] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17163.213984] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17169.232840] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17169.237938] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17170.824321] sipa 25220000.sipa: sipa overflow on ep:1 evt = 0x10000
+[17175.255426] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17175.260541] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17181.277451] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17181.282544] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17187.300967] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17187.306065] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17193.323349] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17193.328466] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17199.346277] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17199.351363] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17205.370164] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17205.375290] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17211.392636] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17211.397730] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17217.415405] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17217.420498] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17223.438303] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17223.443419] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17229.460934] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17229.466049] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17235.482565] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17235.487677] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17241.504424] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17241.509492] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17247.524950] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17247.530019] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17253.546267] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17253.551348] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17259.567651] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17259.572739] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17265.589595] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17265.594710] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17271.611971] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17271.617083] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17277.634223] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17277.639364] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17283.657104] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17283.662217] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17289.315753] sipa 25220000.sipa: sipa overflow on ep:1 evt = 0x10000
+[17289.680586] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17289.685707] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17295.702998] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17295.708114] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17301.725010] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17301.730108] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17307.746507] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17307.751599] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17313.768537] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17313.773675] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17319.792468] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17319.797562] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17325.814866] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17325.819977] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17331.836329] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17331.841435] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17337.858079] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17337.863172] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17343.880858] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17343.885971] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17349.902185] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17349.907287] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17355.924099] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17355.929190] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17361.945989] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17361.951046] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17367.968324] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17367.973381] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17373.989019] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17373.994076] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17380.011159] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17380.016251] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17384.626940] sipa 25220000.sipa: task fill_recv 1
+[17384.631487] sipa 25220000.sipa: thread prepare suspend err
+[17386.032586] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17386.037696] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17392.054032] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17392.059138] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17398.076336] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17398.081421] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17404.097325] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17404.102427] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17409.715137] sipa 25220000.sipa: sipa overflow on ep:1 evt = 0x10000
+[17410.119307] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17410.124399] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17416.140516] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17416.145600] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17422.162330] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17422.167437] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17428.183873] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17428.188972] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17434.205118] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17434.210207] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17440.227078] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17440.232196] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17446.248791] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17446.253885] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17452.269357] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17452.274445] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17458.291879] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17458.296990] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17464.313417] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17464.318499] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17470.336251] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17470.341347] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17476.358309] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17476.363362] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17482.380049] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17482.385169] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17488.402990] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17488.408077] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17494.424911] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17494.430009] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17500.447505] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17500.452619] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17506.469182] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17506.474292] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17512.491333] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17512.496443] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17518.513183] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17518.518294] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17519.939446] sipa 25220000.sipa: sipa overflow on ep:1 evt = 0x10000
+[17524.535155] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17524.540247] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17530.558036] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17530.563132] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17536.579657] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17536.584738] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17542.601297] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17542.606390] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17548.623491] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17548.628583] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17554.644399] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17554.649485] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17560.666102] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17560.671188] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17566.687876] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17566.692981] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17572.709211] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17572.714300] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17578.730743] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17578.735833] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17584.752129] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17584.757224] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17590.773091] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17590.778189] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17592.082124] sprd-wlan: sc2355_rx_rsp_process cid 1 recv rsp[CMD_TX_DATA] status[SPRD_CMD_STATUS_ERROR]
+[17593.471580] sprd-wlan: sc2355_rx_rsp_process cid 1 recv rsp[CMD_TX_DATA] status[SPRD_CMD_STATUS_ERROR]
+[17593.481436] sprd-wlan: sc2355_rx_rsp_process cid 1 recv rsp[CMD_TX_DATA] status[SPRD_CMD_STATUS_ERROR]
+[17596.795056] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17596.800150] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17601.542165] sc27xx-typec 64400000.spi:pmic@0:typec@380: sc27xx_typec_check: count=0 last=3.715555 delta=17598.270130
+[17601.889481] charger-manager charger-manager: failed to aw322xx_charger set power_supply_property[39], ret = -22
+[17601.902721] charger-manager charger-manager: failed to enable primary charger, ret = -22
+[17601.912103] charger-manager charger-manager: failed to enable primary charger, ret = -22
+[17602.816822] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17602.821908] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17607.872556] charger-manager charger-manager: failed to enable primary charger, ret = -22
+[17607.882040] charger-manager charger-manager: failed to enable primary charger, ret = -22
+[17608.130701] misc wlan wlan0: sprd_cfg80211_del_key key index 0 is empty!
+[17608.137446] misc wlan wlan0: sprd_cfg80211_del_key key index 0 is empty!
+[17608.149548] sprd-wlan: sc2355_find_lut_index,1,bssid not found, multicast?
+[17608.149548] default of AP = 4
+[17608.159260] sprd-wlan: sc2355_hif_fill_msdu_dscr, 3535, sta disconn, no data tx!
+[17608.159271] misc wlan wlan0: iface_start_xmit drop msg due to TX Err
+[17608.172940] sprd-wlan: sc2355_find_lut_index,1,bssid not found, multicast?
+[17608.172940] default of AP = 4
+[17608.182710] sprd-wlan: sc2355_hif_fill_msdu_dscr, 3535, sta disconn, no data tx!
+[17608.182715] misc wlan wlan0: iface_start_xmit drop msg due to TX Err
+[17608.429688] sprd-wlan: sc2355_find_lut_index,1,bssid not found, multicast?
+[17608.429688] default of AP = 4
+[17608.439411] sprd-wlan: sc2355_hif_fill_msdu_dscr, 3535, sta disconn, no data tx!
+[17608.439425] misc wlan wlan0: iface_start_xmit drop msg due to TX Err
+[17608.838887] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17608.844040] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17608.869364] sprd-wlan: sc2355_find_lut_index,1,bssid not found, multicast?
+[17608.869364] default of AP = 4
+[17608.879078] sprd-wlan: sc2355_hif_fill_msdu_dscr, 3535, sta disconn, no data tx!
+[17608.879082] misc wlan wlan0: iface_start_xmit drop msg due to TX Err
+[17609.226905] charger-manager charger-manager: failed to enable primary charger, ret = -22
+[17609.236263] charger-manager charger-manager: failed to enable primary charger, ret = -22
+[17609.273447] charger-manager charger-manager: failed to enable primary charger, ret = -22
+[17609.282788] charger-manager charger-manager: failed to enable primary charger, ret = -22
+[17609.804294] sprd-wlan: sc2355_find_lut_index,1,bssid not found, multicast?
+[17609.804294] default of AP = 4
+[17609.814018] sprd-wlan: sc2355_hif_fill_msdu_dscr, 3535, sta disconn, no data tx!
+[17609.814023] misc wlan wlan0: iface_start_xmit drop msg due to TX Err
+[17611.590662] sprd-wlan: sc2355_find_lut_index,1,bssid not found, multicast?
+[17611.590662] default of AP = 4
+[17611.600385] sprd-wlan: sc2355_hif_fill_msdu_dscr, 3535, sta disconn, no data tx!
+[17611.600399] misc wlan wlan0: iface_start_xmit drop msg due to TX Err
+[17613.148046] sprd-wlan: sc2355_find_lut_index,1,bssid not found, multicast?
+[17613.148046] default of AP = 4
+[17613.157769] sprd-wlan: sc2355_hif_fill_msdu_dscr, 3535, sta disconn, no data tx!
+[17613.157780] misc wlan wlan0: iface_start_xmit drop msg due to TX Err
+[17613.171455] sprd-wlan: sc2355_find_lut_index,1,bssid not found, multicast?
+[17613.171455] default of AP = 4
+[17613.181218] sprd-wlan: sc2355_hif_fill_msdu_dscr, 3535, sta disconn, no data tx!
+[17613.181223] misc wlan wlan0: iface_start_xmit drop msg due to TX Err
+[17614.859377] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17614.864470] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17615.173076] sprd-wlan: sc2355_find_lut_index,1,bssid not found, multicast?
+[17615.173076] default of AP = 4
+[17615.182800] sprd-wlan: sc2355_hif_fill_msdu_dscr, 3535, sta disconn, no data tx!
+[17615.182809] misc wlan wlan0: iface_start_xmit drop msg due to TX Err
+[17620.880508] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17620.885563] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17624.354211] charger-manager charger-manager: failed to enable primary charger, ret = -22
+[17626.902250] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17626.907306] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17632.923199] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17632.928289] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17638.531427] sipa 25220000.sipa: sipa overflow on ep:1 evt = 0x10000
+[17638.944746] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17638.949829] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17639.458146] charger-manager charger-manager: failed to enable primary charger, ret = -22
+[17644.967297] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17644.972384] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17650.988249] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17650.993331] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17654.561693] charger-manager charger-manager: failed to enable primary charger, ret = -22
+[17657.009518] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17657.014622] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17663.030683] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17663.035747] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17669.050792] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17669.055846] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17669.665540] charger-manager charger-manager: failed to enable primary charger, ret = -22
+[17675.072609] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17675.077697] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17681.094249] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17681.099345] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17684.769778] charger-manager charger-manager: failed to enable primary charger, ret = -22
+[17687.115362] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17687.120461] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17693.138944] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17693.144043] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17699.161705] misc wlan wlan0: sc2355_dump_survey, idx 0
+[17699.166799] misc wlan wlan0: sc2355_dump_survey, survey_cnt 0
+[17699.877408] charger-manager charger-manager: failed to enable primary charger, ret = -22
+[17703.413632] sprd-wlan: sc2355_get_cmdbuf Drop command CMD_SET_PARAM in case of power off
+[17705.073462] [ASoC:HDST9620] sprd_enable_hmicbias_polling no headset insert!
+[17705.074615] [ASoC: PCM ] return 0
+[17705.095000] Bluetooth: hci0: unexpected event for opcode 0xfca1
+[17705.095293] [ASoC:HDST9620] sprd_enable_hmicbias_polling no headset insert!
+[17705.208038] Bluetooth: hci0: Opcode 0x2039 failed: -19
+[17706.075663] [Audio:PIPE] aud_pipe_recv_cmd, Failed to recv,ret(-512)
+[17706.082751] [Audio:PIPE] aud_pipe_read aud_pipe_recv_cmd failed
+[17708.231184] [drm][sprd_dsi_set_work_mode] tx cmd fifo or payload fifo is not empty
+[17708.240761] reboot: Restarting system

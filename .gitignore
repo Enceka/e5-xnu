@@ -1,0 +1,5 @@
+# 实机抓取的原始二进制（体积大，本地保留，不入库）
+dumps/*.bin
+dumps/*.dtb
+dumps/*.head
+dumps/*.img
