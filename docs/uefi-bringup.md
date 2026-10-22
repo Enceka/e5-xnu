@@ -361,3 +361,21 @@ adbd cannot run as root in production builds
 - [ ] BDS / UFPLoader / DarwinBoot 尚未启用
 - [ ] eMMC 没有 EDK2 host 驱动，`SdDxe`/`EmmcDxe`/`Fat` 先不挂进 FV（M5 处理）
 - [ ] 只有单核跑 DXE（FD 里没有 `ArmPsciMpServicesDxe`），XNU 的 SMP 由 UniXNU 的 ArmCpu 负责
+
+### 10.1 实机运行记录（2026-10-23）
+
+| 时间 | shim 开关 | 现象 | 复位原因 | 结论 |
+| --- | --- | --- | --- | --- |
+| 01:46 | 无（进 SEC） | 屏幕无任何输出 | 无记录，之后不再写日志 | 最早一次「看起来挂死」 |
+| 06:34 | `SHIM_SELFTEST`（无界闪烁，已废弃） | 屏幕无色带 | `hw watchdog int raw status 0x9`，4 分 51 秒 | 只 park 不进 SEC，能活满 LK 的约 300 秒 |
+| 06:45 | 无（进 SEC） | 整屏黑 + 间歇震动 | `hw watchdog int raw status 0x8`，0.7 秒一次 | 故障点在 SEC 内部 |
+| 07:21 | `-DNO_WATCHDOG -DSHIM_SELFTEST`（`SHIM_BLINKS 300`） | 整屏红绿交替闪，人眼确认 | 闪完后进 SEC 同样被复位 | LK 跳转、DPU 扫描、背光时序全部成立 |
+
+07:21 那一轮之后设备回滚到 slot A，收尾状态：
+
+- `misc` offset 0x800 回到原厂记录 `5f61 0000 4243 4142 0102 0000 9f00 1e00 ... 0be1 7146`
+  （slot 0 prio 15 / tries 1 / succ 1，slot 1 prio 14 / tries 1 / succ 0），即 LK 已把 slot B 判失败。
+- `boot_b` 仍是我们的镜像：头 `ANDROID!`、`kernel_size = 0x400240`（4194880）、偏移 0x1000 处
+  `10 00 00 14`（shim 的 `b`）、偏移 0x1008 处 `00 00 08 00`（text_offset 0x80000）。
+- 物理断电重启后 RTC 归零，`uboot_log` 里时间戳变成 `1970-01-01_08-0x-xx`，此前那一段被环形缓冲
+  覆盖，所以 07:21 那一轮自己的复位现场没能留下 —— 长重启风暴会吃掉日志，取证要及时。
