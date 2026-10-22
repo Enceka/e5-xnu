@@ -196,7 +196,54 @@ GOP mode、配置表项数、完整内存图（类型/起止/属性），然后�
 复位之后 LK 会消耗一次 `tries_remaining`，耗尽后自动回滚 slot_a 进 Android，日志就能读了。
 整个过程两三分钟，不需要人碰机器。
 
-## 七、当前状态
+## 七、payload 卷与 initrd（M2/M3 的地基）
+
+UniXNU 的 DarwinBoot 不从内存指针读内核，它从**一个 FAT 卷**里按路径读：内核 Mach-O、
+同目录的 `<kernel>.adt`、trust cache、Data 镜像。这个 FAT 卷就是 Android boot image 的
+ramdisk 字段（`unixnu bootimg` 用 mtools 造好放进去）。所以固件必须把 ramdisk 变成一个
+UEFI 块设备，`Fat` 驱动才能把它挂成卷。
+
+LK 已经把答案写进设备树了。实机 `/chosen` 里有：
+
+```
+linux,initrd-start = <0xc0000000>
+linux,initrd-end   = <0xc3640644>
+```
+
+即 **LK 固定把 ramdisk 放在 0xC0000000**（那次是 56.8 MiB 的 Android vendor ramdisk）。
+`0xC0000000` 不与任何 reserved-memory 节点冲突（cp-modem 止于 0xA2400000，
+nrphy-iqmem 止于 0xA5000000，logobuffer 在 0xBE000000）。
+
+实现：`Platforms/Unisoc/e5Pkg/Drivers/E5PayloadDxe/`，照抄 sheng 的
+`ShengBootMemoryDxe` 里 `PublishInitrd` 的做法——从 SEC 留下的
+`gSiliciumEntryArgHobGuid` HOB 取出 x0 里的 FDT 指针，读 `/chosen` 的两个属性，
+装一个只读 `EFI_BLOCK_IO_PROTOCOL`（512 字节块，`LastBlock = size/512 - 1`）。
+
+**当前状态：编进 `[Components]` 以保证持续可编译，但刻意没有写进 `e5.fdf`。**
+原因很直接——它在 DXE 派发期间跑，一旦出错就会盖掉 `E5BringupDxe` 打的
+EndOfDxe 标记，那样下一轮日志又变成一片空白。等 DXE 确认跑通再挂进 FV。
+
+启用时要同步做两件事，否则会 translation fault：
+
+1. `MemoryMapLib.c` 加一条 `{"Initrd", 0xC0000000, 0x08000000, AddMem, MEM_RES, UNCACHED_UNBUFFERED_XN, Reserv, UNCACHED_UNBUFFERED_XN}`
+   —— 0xC0000000 现在不在 39 个 region 里，MMU 没有映射它，读它就 fault；
+2. 上面这条只是**预留窗口**，真实大小仍从设备树读，`E5PayloadDxe` 不认任何硬编码长度。
+
+## 八、构建不是可重现的（无害，但要知道）
+
+同一份源码连编两次，`e5-uefi.bin` 字节不同（第一个差异在 0x21A6，落在压缩后的
+FVMAIN_COMPACT 里）。原因是 `SiliciumPkg/Sec/Sec.c:84` 把编译时刻写进了固件：
+
+```c
+DEBUG ((EFI_D_WARN, "Firmware Version %s Build at %a on %a\n",
+        PcdGetPtr (PcdFirmwareVersionString), __TIME__, __DATE__));
+```
+
+所以**不要用二进制比对来判断「代码有没有变」**——它永远会报不同。要比就比源码，
+或者看 `Build/` 下各模块的 `.efi`。
+
+## 九、当前状态
+
 
 - [x] EDK2 + Mu + Silicium 构建链在 macOS 上跑通（CLANGDWARF）
 - [x] E5 平台包与 SoC 包成型，`sh uefi/build-e5.sh DEBUG` rc=0，产出 4 MiB FD

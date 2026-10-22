@@ -78,3 +78,12 @@
   # a board that has to be power cycled by hand.
   #
   UMS9621Pkg/Drivers/E5BringupDxe/E5BringupDxe.inf
+
+  #
+  # Payload volume: publishes the boot image ramdisk (/chosen linux,initrd-start)
+  # as a read-only block device so the FAT payload inside it becomes a UEFI
+  # volume. Built here so it keeps compiling, but deliberately absent from
+  # e5.fdf until the DXE core is confirmed running on hardware -- a fault
+  # during dispatch would hide the EndOfDxe marker.
+  #
+  e5Pkg/Drivers/E5PayloadDxe/E5PayloadDxe.inf
