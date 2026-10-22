@@ -35,12 +35,16 @@ typedef unsigned long u64;
 #define DMESG_ZONE 0xfff80000UL
 #define CONSOLE_ZONE 0xfffb0000UL
 #define FB_BASE 0xbe000000UL
-#define FB_BYTES (480UL * 320UL * 4UL)
+/* RGB565, 320 wide x 480 high, 2 bytes per pixel */
+#define FB_W 320UL
+#define FB_H 480UL
+#define FB_STRIDE (FB_W * 2UL)
 #define PRZ_HDR 12
 
 static inline u16 rd16(u64 a) { return *(volatile u16 *)a; }
 static inline u32 rd32(u64 a) { return *(volatile u32 *)a; }
 static inline void wr32(u64 a, u32 v) { *(volatile u32 *)a = v; }
+static inline void wr16(u64 a, u16 v) { *(volatile u16 *)a = v; }
 
 static u64 rd_currentel(void) { u64 v; __asm__ volatile("mrs %0, CurrentEL" : "=r"(v)); return v; }
 static u64 rd_mpidr(void) { u64 v; __asm__ volatile("mrs %0, MPIDR_EL1" : "=r"(v)); return v; }
@@ -547,8 +551,8 @@ dec_field("still draining", uart_ok);
  */
 static void probe_fb(void)
 {
-u32 i, before, after;
-u64 bad = 0;
+u32 before, after;
+u32 x, y;
 
 o_puts("framebuffer 0xbe000000 (lcd_base from cmdline):\n");
 before = rd32(FB_BASE);
@@ -556,37 +560,35 @@ wr32(FB_BASE, 0xa5a5a5a5UL);
 after = rd32(FB_BASE);
 field("  first word before", before);
 field("  read back after write", after);
-if (after != 0xa5a5a5a5UL)
-bad = 1;
 wr32(FB_BASE, before);
-field("  writable", bad ? 0 : 1);
+field("  writable", (after == 0xa5a5a5a5UL) ? 1 : 0);
 
-if (bad == 0) {
-/* solid magenta, then a black/white checker band so we can tell whether the
-   panel is really showing this buffer and whether the stride is 480*4 */
-for (i = 0; i < FB_BYTES / 4; i += 4) {
-wr32(FB_BASE + (u64)i * 4, 0xffff00ffUL);
+/* The DPU layer LK left behind is RGB565 with a 320-pixel pitch over a
+ * 320x480 panel (LAY0_CTRL format field = 0x4 = FORMAT_RGB565, LAY0_PITCH =
+ * 0x140, PANEL_SIZE = 0x1e00140).  Writing 32-bit magenta here therefore
+ * produced one-pixel-wide garbage, not a solid colour.  Paint in RGB565 with
+ * the right geometry instead: four full-width bands plus a black stripe down
+ * the middle so orientation is obvious. */
+o_puts("painting RGB565 320x480 pattern: red / green / blue / white bands,\n");
+o_puts("  plus a black vertical stripe at x=140..179\n");
+for (y = 0; y < FB_H; y++) {
+u16 band = (y < 120) ? 0xf800 : (y < 240) ? 0x07e0 : (y < 360) ? 0x001f : 0xffff;
+for (x = 0; x < FB_W; x++) {
+u16 c = (x >= 140 && x < 180) ? 0x0000 : band;
+wr16(FB_BASE + ((u64)y * FB_W + x) * 2, c);
 }
-for (i = 0; i < 8; i++) {
-u64 y = 40 + i * 20;
-u64 x = 40 + i * 40;
-u32 c = (i & 1) ? 0xffffffffUL : 0xff000000UL;
-wr32(FB_BASE + y * 480UL * 4 + x * 4, c);
-wr32(FB_BASE + y * 480UL * 4 + (x + 20) * 4, c);
-wr32(FB_BASE + (y + 10) * 480UL * 4 + x * 4, c);
-wr32(FB_BASE + (y + 10) * 480UL * 4 + (x + 20) * 4, c);
 }
-o_puts("  painted magenta + 8 checker squares, holding 120s\n");
+field("  word0 after paint (want f800f800)", rd32(FB_BASE));
+field("  word at row120 (want 07e007e0)", rd32(FB_BASE + (u64)120 * FB_W * 2));
+o_puts("  holding 45s\n");
 sync_report();
-/* ~120s at 26MHz: hold long enough that a human can be asked to look */
 {
 u64 start = rd_cntvct();
-while (rd_cntvct() - start < 26000000UL * 120UL) {
+while (rd_cntvct() - start < 26000000UL * 45UL) {
 __asm__ volatile("yield");
 }
 }
 o_puts("  hold done\n");
-}
 }
 
 #endif /* M0_FB */
@@ -604,6 +606,7 @@ o_puts("  hold done\n");
 #define WDT_LOCK 0x20
 #define WDT_UNLOCK_KEY 0xe551
 
+#ifdef M0_WDT
 static void probe_wdt(void)
 {
 u32 lock, ctrl, raw, msk, c0, c1;
@@ -624,12 +627,14 @@ field("  CNT_LOW t1", c1);
 field("  counting", (c0 == c1) ? 0 : 1);
 field("  last reset was watchdog", (raw & 0x8UL) ? 1 : 0);
 }
+#endif /* M0_WDT */
 
 /* Ask the AP watchdog to reset us within a fraction of a second.
  * psci SYSTEM_RESET does not seem to work on this firmware and the fallback
  * path (LK's own watchdog) takes about five and a half minutes, which makes
  * every experiment needlessly slow.  If the watchdog clock is off this simply
  * spins and we end up on the slow path anyway. */
+#ifdef M0_WDT
 static void wdt_reset(void)
 {
 o_puts("forcing AP watchdog reset:\n");
@@ -644,6 +649,49 @@ for (;;) {
 __asm__ volatile("yield");
 }
 }
+
+
+
+#endif /* M0_WDT */
+/* ---------- display controller ---------- */
+#ifdef M0_DPU
+/* Register offsets come from the vendor driver that this board actually uses:
+ * drivers/unisoc_platform/sprd_disp/dpu/dpu_r6p1.c (compatible
+ * "sprd,qogirn6lite-dpu" -> qogirn6lite_dpu -> dpu_r6p1_core_ops, see
+ * drivers/unisoc_platform/sprd_disp/sprd_dpu.c:894-898 and :915). */
+#define DPU_BASE 0x31000000UL
+#define DPU_GLB 0x30120000UL
+#define DSI_BASE 0x31300000UL
+
+static void probe_dpu(void)
+{
+o_puts("DPU 0x31000000 (sprd,qogirn6lite-dpu, r6p1 core ops):\n");
+field("  0x000 id/version", rd32(DPU_BASE + 0x00));
+field("  0x008 DPU_CTRL (bit0=run)", rd32(DPU_BASE + 0x08));
+field("  0x018 PANEL_SIZE", rd32(DPU_BASE + 0x18));
+field("  0x01c BLEND_SIZE", rd32(DPU_BASE + 0x1c));
+field("  0x024 BG_COLOR", rd32(DPU_BASE + 0x24));
+field("  0x02c LAYER_ENABLE", rd32(DPU_BASE + 0x2c));
+field("  0x030 LAY0_BASE_ADDR", rd32(DPU_BASE + 0x30));
+{
+u32 c = rd32(DPU_BASE + 0x40);
+field("  0x040 LAY0_CTRL", c);
+field("    format field [7:4] (4 = RGB565, 3 = ARGB8888)", (c >> 4) & 0xf);
+field("    layer alpha mode bit2", (c >> 2) & 1);
+}
+field("  0x044 LAY0_DES_SIZE", rd32(DPU_BASE + 0x44));
+field("  0x048 LAY0_SRC_SIZE", rd32(DPU_BASE + 0x48));
+field("  0x04c LAY0_PITCH", rd32(DPU_BASE + 0x4c));
+field("  0x050 LAY0_POS", rd32(DPU_BASE + 0x50));
+o_puts("DPU glb block 0x30120000:\n");
+field("  0x000", rd32(DPU_GLB + 0x00));
+field("  0x004", rd32(DPU_GLB + 0x04));
+o_puts("DSI host 0x31300000:\n");
+field("  0x000", rd32(DSI_BASE + 0x00));
+field("  0x004", rd32(DSI_BASE + 0x04));
+field("  0x008", rd32(DSI_BASE + 0x08));
+}
+#endif /* M0_DPU */
 
 /* ---------- main ---------- */
 
@@ -666,14 +714,39 @@ field("GICD_TYPER read at EL1", rd32(GICD_BASE + GICD_TYPER));
 o_puts("===== M0-E5-EL1-DONE =====\n");
 sync_report();
 
-o_puts("reset attempts:\n");
+#ifdef M0_DPU
+/* Reading DPU registers is the only way to find out whether the controller LK
+ * left behind is still scanning out 0xbe000000, which is why painting the
+ * framebuffer produced no visible change.  If the dpuvsp clocks are gated this
+ * read hangs the AXI bus exactly like the AP watchdog read did, and a hang here
+ * is itself the answer. */
+probe_dpu();
+#else
+o_puts("DPU probe disabled (build with -DM0_DPU to enable; the read may hang)\n");
 sync_report();
-{
-u64 rc = psci_call(0x84000009UL, 0, 0);
-field("  SYSTEM_RESET rc (reached only if it did not reset)", rc);
-}
-wdt_reset();
+#endif
+
+/* Exit strategy.  Every fast reset path is a dead end on this firmware:
+ *   - psci SYSTEM_RESET (0x84000009) never returns and never resets;
+ *   - the AP watchdog at 0x641e0000 hangs the AXI bus on the very first read
+ *     because its AON clock is gated;
+ *   - faulting on purpose lands in LK's die handler, which is itself broken
+ *     (it walks a 0xdeaddeaddeaddeb5 poison pointer at PC 0xbf020200) and
+ *     turns one fault into a ~1600 iteration reboot storm before the board
+ *     finally comes back.  It is not faster than waiting, so it is opt-in
+ *     only (-DM0_DIE) and never on the default path.
+ * Default: park the core and let LK's own watchdog reset us in about 5.5min. */
+#ifdef M0_DIE
+o_puts("===== M0-E5-EXIT-DIE (deliberate fault, opt-in) =====\n");
+sync_report();
 die();
+#else
+o_puts("===== M0-E5-EXIT-PARK (waiting for LK watchdog) =====\n");
+sync_report();
+for (;;) {
+__asm__ volatile("wfe");
+}
+#endif
 }
 
 void m0_main(u64 x0, u64 x1, u64 x2, u64 x3)
@@ -748,7 +821,9 @@ line("x0 is not a RAM address, skipping FDT probe");
 probe_gic();
 probe_emmc();
 probe_psci();
+#ifdef M0_WDT
 probe_wdt();
+#endif
 #ifdef M0_SMP
 probe_smp();
 #else
