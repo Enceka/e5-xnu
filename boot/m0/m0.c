@@ -45,6 +45,7 @@ static inline u16 rd16(u64 a) { return *(volatile u16 *)a; }
 static inline u32 rd32(u64 a) { return *(volatile u32 *)a; }
 static inline void wr32(u64 a, u32 v) { *(volatile u32 *)a = v; }
 static inline void wr16(u64 a, u16 v) { *(volatile u16 *)a = v; }
+#include "font8x16.h"
 
 static u64 rd_currentel(void) { u64 v; __asm__ volatile("mrs %0, CurrentEL" : "=r"(v)); return v; }
 static u64 rd_mpidr(void) { u64 v; __asm__ volatile("mrs %0, MPIDR_EL1" : "=r"(v)); return v; }
@@ -218,6 +219,249 @@ dst[n++] = (u8)out[i];
 __asm__ volatile("dsb sy" ::: "memory");
 }
 
+/* ---------- framebuffer console ----------
+ * The DPU keeps scanning 0xbe000000 after LK hands off, so the report can go
+ * straight onto the panel.  Geometry is measured, not guessed: PANEL_SIZE reads
+ * 0x1e00140 (320 wide, 480 high, portrait) and LAY0_CTRL[7:4] = 4 (RGB565), so a
+ * row is 320 * 2 = 640 bytes.  8x16 glyphs give a 40x30 character grid, and the
+ * finished report is replayed in newline-aligned pages so nothing is lost to
+ * scrolling.
+ */
+#define FB_COLS 40
+#define FB_ROWS 30
+#define FB_BG 0x0000
+#define FB_FG 0xffff
+#define FB_HDRC 0x07ff
+#define FB_MAXPAGES 24
+
+static int fb_col;
+static int fb_row;
+static u32 fb_drawn;
+static int fb_ready;
+
+static void fb_fill_row(u32 y, u16 c)
+{
+u64 p = FB_BASE + (u64)y * FB_STRIDE;
+u32 x;
+for (x = 0; x < FB_W; x++)
+wr16(p + (u64)x * 2UL, c);
+}
+
+static void fb_clear(void)
+{
+u32 y;
+for (y = 0; y < FB_H; y++)
+fb_fill_row(y, FB_BG);
+}
+
+static void fb_scroll(void)
+{
+u32 n = (FB_H - 16UL) * FB_W;
+u32 i;
+for (i = 0; i < n; i++)
+wr16(FB_BASE + (u64)i * 2UL, rd16(FB_BASE + (u64)(i + 16UL * FB_W) * 2UL));
+for (i = FB_H - 16UL; i < FB_H; i++)
+fb_fill_row(i, FB_BG);
+fb_row = FB_ROWS - 1;
+}
+
+static void fb_glyph(int col, int row, unsigned char ch, u16 fg)
+{
+const unsigned char *g;
+u32 y;
+int x;
+if (ch < FONT_FIRST || ch > FONT_LAST)
+ch = '?';
+g = &font8x16[(int)(ch - FONT_FIRST) * 16];
+for (y = 0; y < 16; y++) {
+u64 p = FB_BASE + ((u64)row * 16UL + y) * FB_STRIDE + (u64)col * 16UL;
+unsigned char bits = g[y];
+for (x = 0; x < 8; x++)
+wr16(p + (u64)x * 2UL, (bits & (0x80u >> x)) ? fg : FB_BG);
+}
+}
+
+static void fb_text(int col, int row, const char *t, u16 fg)
+{
+while (*t) {
+fb_glyph(col, row, (unsigned char)*t, fg);
+col++;
+t++;
+}
+}
+
+static void fb_newline(void)
+{
+fb_col = 0;
+fb_row++;
+if (fb_row >= FB_ROWS)
+fb_scroll();
+}
+
+static void fb_putc(char c)
+{
+if (c == '\n') {
+fb_newline();
+return;
+}
+if (c == '\r') {
+fb_col = 0;
+return;
+}
+if (c == '\t') {
+int k;
+for (k = 0; k < 4; k++)
+fb_putc(' ');
+return;
+}
+if (fb_col >= FB_COLS)
+fb_newline();
+fb_glyph(fb_col, fb_row, (unsigned char)c, FB_FG);
+fb_col++;
+}
+
+static void fb_pump(void)
+{
+if (fb_ready == 0)
+return;
+while (fb_drawn < olen)
+fb_putc(out[fb_drawn++]);
+}
+
+static void fbcon_init(void)
+{
+fb_clear();
+fb_col = 0;
+fb_row = 0;
+fb_drawn = 0;
+fb_ready = 1;
+}
+
+static void fb_wait(u32 ticks)
+{
+u64 t = rd_cntvct();
+while ((u32)(rd_cntvct() - t) < ticks)
+__asm__ volatile("yield");
+}
+
+/* ---- paged replay of the finished report ---- */
+
+static u32 page_start[FB_MAXPAGES];
+static u32 npages;
+
+static void fb_page_plan(void)
+{
+u32 i = 0;
+u32 lines = 0;
+npages = 0;
+page_start[0] = 0;
+npages = 1;
+for (i = 0; i < olen; i++) {
+if (out[i] == '\n') {
+lines++;
+if (lines >= FB_ROWS - 1 && npages < FB_MAXPAGES) {
+page_start[npages] = i + 1;
+npages++;
+lines = 0;
+}
+}
+}
+}
+
+static void fb_page_show(u32 p)
+{
+u32 i = page_start[p];
+u32 end = (p + 1 < npages) ? page_start[p + 1] : olen;
+char hdr[48];
+int k = 0;
+u32 n = p + 1;
+
+fb_clear();
+hdr[k++] = 'M';
+hdr[k++] = '0';
+hdr[k++] = ' ';
+hdr[k++] = 'E';
+hdr[k++] = '5';
+hdr[k++] = ' ';
+hdr[k++] = 'p';
+hdr[k++] = 'a';
+hdr[k++] = 'g';
+hdr[k++] = 'e';
+hdr[k++] = ' ';
+hdr[k++] = (char)('0' + (n % 10));
+hdr[k++] = '/';
+hdr[k++] = (char)('0' + (npages % 10));
+hdr[k++] = ' ';
+hdr[k++] = '-';
+hdr[k++] = ' ';
+hdr[k++] = 'e';
+hdr[k++] = 'n';
+hdr[k++] = 't';
+hdr[k++] = 'e';
+hdr[k++] = 'r';
+hdr[k++] = ' ';
+hdr[k++] = 't';
+hdr[k++] = 'o';
+hdr[k++] = ' ';
+hdr[k++] = 's';
+hdr[k++] = 'c';
+hdr[k++] = 'r';
+hdr[k++] = 'o';
+hdr[k++] = 'l';
+hdr[k++] = 'l';
+hdr[k] = 0;
+fb_text(0, 0, hdr, FB_HDRC);
+
+fb_col = 0;
+fb_row = 1;
+for (i = page_start[p]; i < end; i++)
+fb_putc(out[i]);
+}
+
+/* Draw one glyph and read the pixels back.  This is the only way to prove the
+ * text path works without a human looking at the panel: the expected colour of
+ * each pixel is derived from the font bitmap itself. */
+static void fb_selfcheck(void)
+{
+const unsigned char *g = &font8x16[('M' - FONT_FIRST) * 16];
+u32 y;
+int x;
+u32 bad = 0;
+u32 ones = 0;
+
+fb_glyph(0, 0, 'M', FB_HDRC);
+for (y = 0; y < 16; y++) {
+u64 p = FB_BASE + (u64)y * FB_STRIDE;
+unsigned char bits = g[y];
+for (x = 0; x < 8; x++) {
+u16 want = (bits & (0x80u >> x)) ? FB_HDRC : FB_BG;
+u16 got = rd16(p + (u64)x * 2UL);
+if (bits & (0x80u >> x))
+ones++;
+if (got != want)
+bad++;
+}
+}
+o_puts("fb selfcheck glyph 'M': set pixels = ");
+o_dec(ones);
+o_puts(", mismatches = ");
+o_dec(bad);
+o_puts("\n");
+sync_report();
+}
+
+static void fb_page_loop(void)
+{
+fb_page_plan();
+for (;;) {
+u32 p;
+for (p = 0; p < npages; p++) {
+fb_page_show(p);
+fb_wait(26000000UL * 9UL);
+}
+}
+}
+
 static void sync_report(void)
 {
 if (publishing == 0)
@@ -226,6 +470,7 @@ outlen = olen;
 prz_publish(CONSOLE_ZONE, out, outlen);
 dmesg_publish();
 uart_flush();
+fb_pump();
 }
 
 /* ---------- PSCI ---------- */
@@ -741,11 +986,10 @@ o_puts("===== M0-E5-EXIT-DIE (deliberate fault, opt-in) =====\n");
 sync_report();
 die();
 #else
-o_puts("===== M0-E5-EXIT-PARK (waiting for LK watchdog) =====\n");
+o_puts("===== M0-E5-EXIT-PARK (paging the report, LK watchdog will reset) =====\n");
 sync_report();
-for (;;) {
-__asm__ volatile("wfe");
-}
+fb_selfcheck();
+fb_page_loop();
 #endif
 }
 
@@ -753,7 +997,8 @@ void m0_main(u64 x0, u64 x1, u64 x2, u64 x3)
 {
 u64 mpidr, midr, pfr0, mmfr0;
 
-o_puts("\n\n===== M0-E5-BEGIN =====\n");
+fbcon_init();
+o_puts("===== M0-E5-BEGIN =====\n");
 o_puts("E5 M0 stub, LK handoff report\n");
 
 /* Insurance: an EL1 fault should land in our own pad, not at address 0. */

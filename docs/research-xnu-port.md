@@ -288,9 +288,24 @@ UMP9620 PMIC + AW32257 充电。GPU 不在计划内。
 - 没有 `dtc`，没有 `aarch64-linux-gnu-gcc`。
 - Python 3.9（`/Library/Developer/CommandLineTools`），已装 `pyfdt`，用法 `from pyfdt.pyfdt import FdtBlobParse`；
   `dumps/live-fdt.dts` 就是它导出的。
-- UniXNU 的 `build kernel` / `build package` / `build firmware` / `bootimg` 在任何 OS 都能跑；
-  **`ipsw fetch` 的 userdata 与 Data seed 两步要 macOS 的 hdiutil/diskutil**，没有 Xcode 就得用
-  UniXNU 自带的 GitHub macOS runner workflow。
+- **XNU 内核这一步在本机做不了（已核实，2026-10-23）**。`UniXNU/scripts/unixnu/kernel.py:75` 里写死：
+  `tool('xcodebuild', 'the kernel step builds with the Xcode iphoneos SDK')`，
+  即 `./unixnu build kernel` 必须有 **Xcode 的 iphoneos SDK**。
+  本机 `xcrun --sdk iphoneos --show-sdk-path` 直接报
+  `xcrun: error: SDK "iphoneos" cannot be located`，只有 `/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk`。
+- 磁盘也装不下 Xcode：`/Volumes/Projects` 只剩 2.4 GiB（98%），系统卷剩 23 GiB，而 Xcode 要 40 GiB 以上。
+- 其余步骤的工具需求（读 `scripts/unixnu/*.py` 的 `tool()` 调用得到）：
+  | 步骤 | 需要 | 本机 |
+  |---|---|---|
+  | `build kernel` | `xcodebuild` + iphoneos SDK | **缺** |
+  | `build firmware` | `clang`、`python3`、`make` | 有 |
+  | `build package` | `clang` | 有 |
+  | `build payload` | `llvm-nm`、`mtools`、`hdiutil` | 有（mtools 待装） |
+  | `bootimg` | `clang`、`llvm-objcopy`、`llvm-nm`、`fdtput`/`fdtget`(dtc) | dtc 待装 |
+  | `ipsw fetch` 的 userdata / Data seed | `hdiutil`、`diskutil` | 有（macOS 自带） |
+- 结论：**内核必须靠 GitHub Actions 的 macOS runner 出**（UniXNU 自带 `.github/workflows` 的
+  `macOS build` workflow，公开仓库免额度）。本地能做的部分（firmware / package / bootimg /
+  ADT / 裸机 loader）不受影响。
 
 ## 七、未验证项与风险
 
