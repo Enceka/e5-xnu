@@ -21,10 +21,32 @@ PAYLOAD=${PAYLOAD:-$ROOT/uefi/build/e5-uefi.bin}
 MISC_TMP=/tmp/e5-misc4k.bin
 HDR_TMP=/tmp/e5-hdr8.bin
 
+# Root on this board is Magisk and adbd refuses "adb root" on the stock
+# build, so privileged work goes through /debug_ramdisk/su instead.
+SU=
 need_root() {
   $ADB root >/dev/null 2>&1 || true
   $ADB wait-for-device
   sleep 1
+  cur=`$ADB shell id 2>/dev/null | tr -d "\r" | cut -d" " -f1`
+  if [ "$cur" = "uid=0(root)" ]; then
+    SU=
+  elif $ADB shell "/debug_ramdisk/su -c id" 2>/dev/null | grep -q "uid=0(root)"; then
+    SU="/debug_ramdisk/su -c"
+    echo "== privileged access through /debug_ramdisk/su"
+  else
+    echo "no root available"; exit 1
+  fi
+}
+
+# Run a command as root on the device.
+priv() {
+  if [ -n "$SU" ]; then $ADB shell "$SU '$1'"; else $ADB shell "$1"; fi
+}
+
+# Same, but streaming the output back to stdout.
+priv_out() {
+  if [ -n "$SU" ]; then $ADB exec-out "$SU '$1'"; else $ADB exec-out "$1"; fi
 }
 
 flash() {
@@ -33,20 +55,20 @@ flash() {
   echo "== payload $PAYLOAD ($SIZE bytes)"
   need_root
   echo "== arming misc (slot A prio 14 tries 1, slot B prio 15 tries 2)"
-  $ADB exec-out "dd if=/dev/block/by-name/misc bs=4096 count=1" > "$MISC_TMP"
+  priv_out "dd if=/dev/block/by-name/misc bs=4096 count=1" > "$MISC_TMP"
   python3 "$ROOT/tools/e5-misc.py" patch "$MISC_TMP" --suffix _b --a-prio 14 --a-tries 1 --a-succ 1 --b-prio 15 --b-tries 2 --b-succ 0
   $ADB push "$MISC_TMP" /data/local/tmp/misc4k.bin >/dev/null
-  $ADB shell "dd if=/data/local/tmp/misc4k.bin of=/dev/block/by-name/misc bs=4096 count=1 conv=notrunc" 2>/dev/null
+  priv "dd if=/data/local/tmp/misc4k.bin of=/dev/block/by-name/misc bs=4096 count=1 conv=notrunc" 2>/dev/null
   echo "== writing payload into boot_b (kernel starts at 0x1000, hence seek=1)"
   $ADB push "$PAYLOAD" /data/local/tmp/e5-uefi.bin >/dev/null
-  $ADB shell "dd if=/data/local/tmp/e5-uefi.bin of=/dev/block/by-name/boot_b bs=4096 seek=1 conv=notrunc" 2>/dev/null
+  priv "dd if=/data/local/tmp/e5-uefi.bin of=/dev/block/by-name/boot_b bs=4096 seek=1 conv=notrunc" 2>/dev/null
   echo "== patching the boot image header (kernel_size, ramdisk_size=0)"
   python3 -c "import struct,sys; open(sys.argv[1],\"wb\").write(struct.pack(\"<II\", int(sys.argv[2]), 0))" "$HDR_TMP" "$SIZE"
   $ADB push "$HDR_TMP" /data/local/tmp/e5-hdr8.bin >/dev/null
-  $ADB shell "dd if=/data/local/tmp/e5-hdr8.bin of=/dev/block/by-name/boot_b bs=1 seek=8 conv=notrunc" 2>/dev/null
+  priv "dd if=/data/local/tmp/e5-hdr8.bin of=/dev/block/by-name/boot_b bs=1 seek=8 conv=notrunc" 2>/dev/null
   echo "== reading back the header and the first payload words"
-  $ADB shell "dd if=/dev/block/by-name/boot_b bs=4096 count=2" 2>/dev/null | od -A d -t x1 -N 32 | head -2
-  $ADB shell "dd if=/dev/block/by-name/boot_b bs=4096 count=2" 2>/dev/null | od -A d -t x1 -j 4096 -N 32 | head -2
+  priv "dd if=/dev/block/by-name/boot_b bs=4096 count=2" 2>/dev/null | od -A d -t x1 -N 32 | head -2
+  priv "dd if=/dev/block/by-name/boot_b bs=4096 count=2" 2>/dev/null | od -A d -t x1 -j 4096 -N 32 | head -2
 }
 
 collect() {
@@ -73,7 +95,7 @@ collect() {
   need_root
   STAMP=`date +%H%M%S`
   REPORT=$ROOT/dumps/uefi-report-$STAMP.txt
-  $ADB exec-out "cat /sys/fs/pstore/console-ramoops-0" > "$REPORT"
+  priv_out "cat /sys/fs/pstore/console-ramoops-0" > "$REPORT"
   echo "== report: $REPORT (`wc -c < "$REPORT"` bytes)"
   echo "----------------------------------------------------------------"
   cat "$REPORT"
