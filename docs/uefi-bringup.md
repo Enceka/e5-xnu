@@ -168,8 +168,18 @@ Failed to Configure MMU! Status = Invalid Parameter
 
 ### 6.1 BootShim 里布 AP 看门狗（60 秒）
 
-难点是 AON 那组外设**默认被时钟门控**，而访问被门控的寄存器不是 fault，是把 AXI 总线
-卡死（M0 阶段读 `0x641e0000` 直接把机器读死）。所以先开两个门，都在
+难点是 AON 那组外设**默认被时钟门控**，而被门控的寄存器一读就完蛋。M0 阶段读
+`0x641e0000` 当场把机器读死，当时记成「AXI 总线卡死」；后来从 `uboot_log` 里翻到原始现场，
+其实是**同步外部异常**被 LK 的 EL2 向量接住了：
+
+```
+data fault: Read access from PC 0x800833f4, FAR 0x641e0020, iss 0x10
+ESR 0x96000010: ec 0x25, il 0x2000000, iss 0x10, EL2
+Synchronous External abort, not on translation table walk
+```
+
+所以那次「挂死」只是异常之后 LK 的 panic 路径自己崩掉，不是总线真的锁死。不过结论不变：
+**碰之前先开时钟**。两个门都在
 `syscon@64900000` 的 `aonapb-gate`（`compatible = "sprd,ums9621-aon-gate"`）里，
 是 set/clear 型门（`clk_sc_gate_toggle()`：使能 = 往 `reg + sc_offset` 写 mask）：
 
@@ -182,6 +192,19 @@ Failed to Configure MMU! Status = Invalid Parameter
 `LOAD_HIGH 0x04 = 0x1e`（60 秒，一 tick = 1/32768 s，所以 `60*32768 = 0x1e0000`）、
 `LOAD_LOW 0x00 = 0`、`CTRL 0x08 = 0xf`（`NEW_VER_EN|INT_EN|CNT_EN|RST_EN`）、
 再写 `0x20 = 0` 锁回去。`-DNO_WATCHDOG` 可关。
+
+**已知缺陷：这个 60 秒并没有生效。** 实测从死到复位是 4 分 51 秒，正好是 LK 自己预先布好的
+约 300 秒超时。原因是 `sprd_wdt_load_value()` 在写 `LOAD_HIGH/LOAD_LOW` 之前必须先轮询
+`INT_RAW & LD_BUSY`（`SPRD_WDT_INT_RAW` 的 bit4）等它清零，直接写的话 LOAD 值会被丢弃，
+只有 `CTRL` 里的使能位生效。也就是说当前实际起作用的是 LK 留下的那个 5 分钟死手开关，
+我们自己的 60 秒要等这段轮询补上。复位确实发生了，`uboot_log` 里下一次启动的现场是：
+
+```
+hw_rst_mode==2                    (adb reboot 正常是 2002)
+reg_rst_mode is 0
+hw watchdog int raw status 0x9     (bit0 INT_RAW + bit3 RST_RAW)
+reboot_mode_check rst_mode=0x2
+```
 
 ### 6.2 E5BringupDxe：走到 DXE 末尾就自己复位
 
@@ -242,17 +265,99 @@ DEBUG ((EFI_D_WARN, "Firmware Version %s Build at %a on %a\n",
 所以**不要用二进制比对来判断「代码有没有变」**——它永远会报不同。要比就比源码，
 或者看 `Build/` 下各模块的 `.efi`。
 
-## 九、当前状态
+## 九、屏显：唯一不用重启就能读的通道
+
+### 9.1 为什么必须做
+
+挂死的时候 ramoops 读不到东西。最直接的一次证据：一次整机挂死 20 分钟后回到 Android，
+`/sys/fs/pstore/console-ramoops-0` 里还是**上一轮 Android 的内核日志**（最后一行
+`reboot: Restarting system with command 'shell'`），我们的 `SprdDebugSerialPortLib`
+一个字节都没写进去 —— 也就是 SEC 从来没跑到 `SerialPortInitialize`。
+
+UART1 在物理上是有输出的（M0 阶段量过 TX FIFO 在排空），但没有探针；`uboot_log` 只能
+事后读、而且要等回滚。所以面板是唯一「当下就能看」的通道。
+
+### 9.2 BootShim 的阶段色
+
+`BootShim.S` 在每一步刷**整屏**（`320*480 = 153600` 个 RGB565 像素），最后留在屏幕上的
+颜色就是走到的最远阶段：
+
+| 颜色 | 值 | 含义 |
+| --- | --- | --- |
+| 蓝 | `0x001f` | shim 被进入（LK 确实跳到了 `0x80080000`） |
+| 黄 | `0xffe0` | 源区 clean 到 PoC 完成 |
+| 绿 | `0x07e0` | 4 MiB 固件卷已拷到 `FD_BASE` |
+| 品红 | `0xf81f` | 拷贝已 publish（`ic iallu`） |
+| 白 | `0xffff` | 看门狗已布好，正要进 SEC |
+
+第一版只刷顶部 16 像素高的一条，最后一种颜色还是白色 —— 而 LK 的启动 logo 背景就是白的，
+所以那版等于什么都没画。**整屏是必须的。**
+
+### 9.3 `SHIM_SELFTEST`：把「跳没跳」和「会不会复位」分开测
+
+`SELFTEST=1 sh uefi/build-e5.sh DEBUG`（或直接 `SHIM_FLAGS=-DSHIM_SELFTEST`）会编出
+一个停住不走的 shim：刷完白色之后红/绿整屏交替，每 0.4 秒一次。这样两件事同时可见 ——
+CPU 活着（颜色在变）、看门狗到期（颜色不再变）。
+
+闪烁次数是**有界的**（`#define SHIM_BLINKS 300`，约 4 分钟），闪完照样掉进 SEC，
+免得一个没人看着的实验永远停在那里。`SHIM_FLAGS` 是新增的通用口子，例如
+`SHIM_FLAGS="-DNO_WATCHDOG -DSHIM_SELFTEST"` 可以完全绕开看门狗。
+
+### 9.4 结论（2026-10-23 07:21 实测）
+
+**整屏红绿交替闪 —— 人眼确认。** 这一条同时钉死了三件事：
+
+1. LK 的 `start_linux` 确实跳到了 `0x80080000`，我们的 shim 在跑；
+2. `0xbe000000` 这块缓冲在 LK 交接之后**仍然被 DPU 扫描输出**（M0 阶段的结论对 shim 同样成立）；
+3. 背光、面板时序在交接之后都还活着。
+
+在此之前一直以为「看不到 = 没跑」，其实是**屏幕全黑 = 板子在反复重启**（见 9.5），
+不是没有输出。
+
+### 9.5 黑屏的真相：0.7 秒一次的重启风暴
+
+那一版（刷完整屏色块后 `br` 进 SEC）用户看到的是「屏幕黑的，一直在间断的震动」。`uboot_log`
+里对应的一段是：
+
+```
+06:45:04  Booting slot_b
+          [start_linux] start linux at PC:0x80080000, dt_addr:0x86000000
+06:45:13  LK time is ...          <- 9 秒后已经在重新启动 LK
+06:45:14 / 06:45:15 / 06:45:16 / 06:45:25 / 06:45:40 ...
+06:54     ANDROID: Booting slot_a  <- 靠回滚脱身
+```
+
+复位原因寄存器 `hw_rst_mode==2` / `hw watchdog int raw status 0x8`（只有 bit3 `RST_RAW`，
+没有 bit0 `INT_RAW`）说明是**看门狗直接复位**，而且从交接到复位不到 1 秒 —— 屏幕上的色块
+还没画完就被清掉了，所以人眼什么都看不到。震动是马达在每次启动时被短暂驱动。
+
+对照实验：**只 park 不进 SEC** 的那一版（`SHIM_SELFTEST`）活了 4 分 51 秒才被看门狗收走。
+两者唯一的差别是最后那一条 `br x5`。所以故障点在 **SEC 内部**，不在跳转本身。
+
+### 9.6 工具链注意事项
+
+这台机器的 root 是 Magisk，`ro.debuggable` 现在是 0，所以 `adb root` 会直接拒绝：
+
+```
+adbd cannot run as root in production builds
+```
+
+特权操作要写成 `adb shell "/debug_ramdisk/su -c '<命令>'"`，读分区用
+`adb exec-out "/debug_ramdisk/su -c 'dd if=/dev/block/by-name/... bs=...'"`。
+
+## 十、当前状态
 
 
 - [x] EDK2 + Mu + Silicium 构建链在 macOS 上跑通（CLANGDWARF）
 - [x] E5 平台包与 SoC 包成型，`sh uefi/build-e5.sh DEBUG` rc=0，产出 4 MiB FD
-- [x] BootShim 搬运 + SEC 入口 + ramoops 输出在实机确认
-- [x] MemoryMapLib 39 个 region 全部 4 KiB 对齐
+- [x] BootShim 搬运 + SEC 入口 + ramoops 输出在实机确认（第一次实机就打印到 `Failed to Configure MMU`）
+- [x] MemoryMapLib 39 个 region 全部 4 KiB 对齐（正则复核过 overlaps: 0）
+- [x] **LK 确实跳到 `0x80080000`**，帧缓冲在交接后仍被扫描输出（07:21 红绿交替闪，人眼确认）
+- [x] 看门狗确实能复位（`hw_rst_mode==2` + `hw watchdog int raw status 0x8`）；但生效的是 LK 留的
+      约 300 秒超时，shim 自己的 60 秒因缺 `LD_BUSY` 轮询而没写进 LOAD
 - [x] 看门狗布置与 EndOfDxe 主动复位已编进镜像
-- [ ] **未验证**：看门狗是否真的能复位（下一轮实测）
-- [ ] **未定位**：MMU 修好之后的静默挂死点
-- [ ] DXE 派发是否完成（等下一轮日志）
+- [ ] **未定位**：进 SEC 后不到 1 秒就被看门狗复位（park 版能活 4 分 51 秒，只差 `br x5` 这一条）
+- [ ] DXE 派发是否完成（至今没拿到任何 `Silicium`/`DXE` 日志）
 - [ ] BDS / UFPLoader / DarwinBoot 尚未启用
 - [ ] eMMC 没有 EDK2 host 驱动，`SdDxe`/`EmmcDxe`/`Fat` 先不挂进 FV（M5 处理）
 - [ ] 只有单核跑 DXE（FD 里没有 `ArmPsciMpServicesDxe`），XNU 的 SMP 由 UniXNU 的 ArmCpu 负责
