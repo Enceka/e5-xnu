@@ -1,0 +1,29 @@
+##
+#  Unisoc UMS9621 (Qogirn6lite) package
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  DEC_SPECIFICATION              = 0x00010005
+  PACKAGE_NAME                   = UMS9621Pkg
+  PACKAGE_GUID                   = 6E3B1C74-9A21-4E8F-9C0D-1B7A2F5E4D31
+  PACKAGE_VERSION                = 0.1
+
+[Includes]
+  Include
+
+[Guids]
+  #
+  # Token space for the platform PCDs this package introduces.
+  #
+  gUms9621PkgTokenSpaceGuid = { 0x2B7C4E19, 0x8D3A, 0x4F62, { 0x9A, 0x1C, 0x5E, 0x7B, 0x04, 0xD8, 0x63, 0x2F } }
+
+[PcdsFixedAtBuild]
+  #
+  # Bring-up behaviour: when TRUE, E5BringupDxe resets the machine at the end of
+  # DXE dispatch instead of falling into BDS.  A blind firmware that parks in the
+  # BDS front page waiting for a key press is indistinguishable from a hang and
+  # costs a physical power cycle to escape, so during bring-up we always want to
+  # come back to Android on our own.
+  #
+  gUms9621PkgTokenSpaceGuid.PcdE5ResetAtEndOfDxe|TRUE|BOOLEAN|0x00010001

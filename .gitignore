@@ -11,3 +11,4 @@ boot/m0/*.o
 boot/m0/*.elf
 boot/m0/*.bin
 .DS_Store
+uefi/build/

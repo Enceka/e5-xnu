@@ -1,0 +1,10 @@
+
+Project Silicium for Rongyue E5
+Firmware Version 4.0 Build at 17:36:48 on Oct 22 2026
+
+MMU InMMU: 39 regions
+MMU: map valid
+MMU: HOBs built, enabling
+UpdateRegionMapping RegionStart: 0x30120000 or RegionLength: 0x100 are not page aligned!
+MMU: enabled
+Failed to Configure MMU! Status = Invalid Parameter

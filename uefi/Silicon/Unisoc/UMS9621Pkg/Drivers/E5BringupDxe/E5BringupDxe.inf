@@ -1,0 +1,44 @@
+## @file
+#  E5 bring-up probe: runs at the end of DXE dispatch, dumps what DXE managed
+#  to discover and then hands control back to LK instead of sitting in BDS
+#  waiting for a key press that no one can deliver.
+#
+#  Copyright (c) 2026, e5-xnu contributors. SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+[Defines]
+  INF_VERSION                    = 0x0001001A
+  BASE_NAME                      = E5BringupDxe
+  FILE_GUID                      = 8F2A64D1-0C57-4B93-A6E8-71D4B2C05F19
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = E5BringupInitialize
+
+[Sources]
+  E5BringupDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  UMS9621Pkg/UMS9621Pkg.dec
+
+[LibraryClasses]
+  UefiBootServicesTableLib
+  UefiRuntimeServicesTableLib
+  UefiDriverEntryPoint
+  DebugLib
+  BaseLib
+  BaseMemoryLib
+  MemoryAllocationLib
+  CpuLib
+
+[Guids]
+  gEfiEndOfDxeEventGroupGuid
+
+[Protocols]
+  gEfiGraphicsOutputProtocolGuid
+
+[Pcd]
+  gUms9621PkgTokenSpaceGuid.PcdE5ResetAtEndOfDxe
+
+[Depex]
+  TRUE
