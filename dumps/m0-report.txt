@@ -1,0 +1,70 @@
+
+
+===== M0-E5-BEGIN =====
+E5 M0 stub, LK handoff report
+  CurrentEL = 0x8
+  MPIDR_EL1 = 0x81000000
+  aff0 = 0
+  aff1 = 0
+  MT (multi-threaded cores) = 1
+  MIDR_EL1 = 0x412fd050
+  implementer = 0x41
+  variant = 0x2
+  partnum = 0xd05
+  revision = 0x0
+  SCTLR_EL1 = 0x30d00800
+  MMU enabled (M bit) = 0x0
+  D-cache enabled (C bit) = 0x0
+  I-cache enabled (I bit) = 0x0
+  DAIF = 0x3c0
+  SCTLR_EL2 = 0x30c50830
+  HCR_EL2 = 0x122
+  VBAR_EL2 = 0xbf001000
+  CPTR_EL2 = 0x33ff
+  VBAR_EL1 = 0x0
+  ID_AA64PFR0_EL1 = 0x11112222
+  EL3 present = 0x2
+  EL2 present = 0x2
+  ID_AA64MMFR0_EL1 = 0x101122
+  CNTFRQ_EL0 Hz = 26000000
+  CNTVCT_EL0 = 0xd0432d2
+handoff registers:
+  x0 = 0x86000000
+  x1 = 0x0
+  x2 = 0x0
+  x3 = 0x0
+FDT passed in x0:
+  address = 0x86000000
+  magic (want 0xd00dfeed) = 0xedfe0dd0
+  totalsize = 0x7c5c0400
+  version = 0x11000000
+  off_dt_struct = 0x48000000
+  off_dt_strings = 0x40ac0300
+  size_dt_strings = 0xe1510000
+  size_dt_struct = 0xf8ab0300
+GIC:
+  GICD_TYPER = 0x790408
+  SPI lines = 288
+  GICD_PIDR2 arch rev = 0x0
+  GICR0_TYPER = 0x20
+  GICR0 affinity = 0x0
+  Redistributors = 8
+  GICR1 affinity = 0x100
+eMMC sdhci@22200000:
+  HOST_VERSION = 0x4
+  spec version = 0
+  CAPABILITIES = 0x1e6d0080
+  CAPABILITIES_1 = 0x8000007
+  base clock MHz = 0
+  1.8V = 0x1
+  3.0V = 0x0
+  high speed = 0x1
+  SDR50 = 0x1
+  SDR104 = 0x1
+  DDR50 = 0x1
+  HS200 = 0x0
+  HS400 = 0x0
+  slot type = 0x0
+===== M0-E5-END =====
+  PSCI_VERSION = 65536
+===== M0-E5-DONE =====

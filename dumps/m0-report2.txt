@@ -1,0 +1,114 @@
+
+
+===== M0-E5-BEGIN =====
+E5 M0 stub, LK handoff report
+  CurrentEL = 0x8
+  MPIDR_EL1 = 0x81000000
+    aff0 = 0
+    aff1 = 0
+    aff2 = 0
+  MIDR_EL1 = 0x412fd050
+    implementer = 0x41
+    variant = 0x2
+    partnum = 0xd05
+    revision = 0x0
+  SCTLR_EL1 = 0x30d00800
+    MMU on (M) = 0x0
+    D-cache on (C) = 0x0
+    I-cache on (I) = 0x0
+  DAIF = 0x3c0
+  VBAR_EL1 = 0x0
+  SCTLR_EL2 = 0x30c50830
+    MMU on (M) = 0x0
+  HCR_EL2 = 0x122
+    RW (1 = EL1 is AArch64) = 0x0
+  VBAR_EL2 = 0xbf001000
+  CPTR_EL2 = 0x33ff
+    TFP (traps FP/SIMD) = 0x0
+  ID_AA64PFR0_EL1 = 0x11112222
+    EL0 = 0x2
+    EL1 = 0x2
+    EL2 = 0x2
+    EL3 = 0x2
+    FP = 0x1
+    AdvSIMD = 0x1
+    GIC sysregs = 0x1
+  ID_AA64MMFR0_EL1 = 0x101122
+    PARange = 0x2
+    ASID bits = 0x2
+    TGran4 (0 = 4K ok) = 0x0
+    TGran16 (0 = 16K ok) = 0x1
+    TGran64 (0 = 64K ok) = 0x0
+  CNTFRQ_EL0 Hz = 26000000
+  CNTVCT_EL0 = 0xd178f00
+handoff registers:
+  x0 = 0x86000000
+  x1 = 0x0
+  x2 = 0x0
+  x3 = 0x0
+FDT passed in x0:
+  address = 0x86000000
+  magic (want 0xd00dfeed) = 0xd00dfeed
+  totalsize = 0x45c7c
+  off_dt_struct = 0x48
+  off_dt_strings = 0x3ac40
+  version = 0x11
+  size_dt_strings = 0x51e1
+  size_dt_struct = 0x3abf8
+GIC:
+  GICD_CTLR = 0x10
+  GICD_TYPER = 0x790408
+    ITLines/SPI lines = 288
+    ESPI (bit10) = 0x1
+    LPI support (bit16) = 0x1
+    SecurityExtn (bit20) = 0x1
+  GICD_IIDR = 0x201743b
+  GICD_PIDR0 = 0x0
+  GICD_PIDR2 arch rev = 0x0
+  GICR0: affinity=0x20 procnum=0 last=0 waker=0x0
+  GICR1: affinity=0x120 procnum=0 last=0 waker=0x0
+  GICR2: affinity=0x220 procnum=0 last=0 waker=0x0
+  GICR3: affinity=0x320 procnum=0 last=0 waker=0x0
+  GICR4: affinity=0x420 procnum=0 last=0 waker=0x0
+  GICR5: affinity=0x520 procnum=0 last=0 waker=0x0
+  GICR6: affinity=0x620 procnum=0 last=0 waker=0x0
+  GICR7: affinity=0x730 procnum=0 last=0 waker=0x0
+eMMC sdhci@22200000:
+  HOST_VERSION = 0x4
+    spec version = 4
+  CAPABILITIES = 0x1e6d0080
+  CAPABILITIES_1 = 0x8000007
+    base clock MHz [15:8] = 0
+    VDD 3.3V = 0x0
+    VDD 3.0V = 0x1
+    VDD 1.8V = 0x1
+    high speed = 0x1
+    8-bit bus = 0x1
+    ADMA2 = 0x1
+    ADMA3 = 0x1
+    64-bit addr = 0x1
+    SDR50 = 0x1
+    SDR104 = 0x1
+    DDR50 = 0x1
+    HS400 = 0x0
+PSCI:
+  PSCI_VERSION = 0x10000
+  AFFINITY_INFO (0=ON 1=OFF 2=PENDING -1=INVALID -2=NOT_SUP):
+    affinity 0x0 -> 0
+    affinity 0x1 -> 1
+    affinity 0x2 -> 1
+    affinity 0x3 -> 1
+    affinity 0x4 -> 1
+    affinity 0x5 -> 1
+    affinity 0x100 -> 1
+    affinity 0x101 -> 1
+UART1 0x20210000:
+  LSR = 0x1b63
+  STS1 (TX/RX fifo counts) = 0xe0000
+  bytes accepted = 2536
+  still draining = 1
+===== M0-E5-END (still at EL2) =====
+
+===== M0-E5-AT-EL1 =====
+  CurrentEL (want 0x4) = 0x4
+  SCTLR_EL1 = 0x30d00800

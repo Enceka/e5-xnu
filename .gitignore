@@ -3,3 +3,11 @@ dumps/*.bin
 dumps/*.dtb
 dumps/*.head
 dumps/*.img
+dumps/**/*.img
+dumps/**/*.bin
+
+# 构建产物
+boot/m0/*.o
+boot/m0/*.elf
+boot/m0/*.bin
+.DS_Store

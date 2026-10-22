@@ -76,6 +76,25 @@ PSCI CPU_ON 的 entry 就是这一页，副核从 `start_cpu` 进。
 推论【C】：**XNU 不需要 UEFI**。任何能在 EL1 填好一个 `boot_args` 并跳过去的代码都能启动它。
 这既是「200 行 stub 可以当 M0」的依据，也是「UEFI 不是唯一路线」的依据。
 
+**M0 实测修正（见 `docs/m0-bringup-report.md`）**：LK 实际把控制权交在 **EL2**，且 `HCR_EL2.RW = 0`
+（此刻 EL1 是 AArch32）。所以启动 XNU 之前必须自己降到 EL1：
+
+```asm
+msr   sp_el1, x1          // EL1 栈
+msr   vbar_el1, x2        // EL1 向量表（XNU 会自己重设，先给一张保命）
+msr   elr_el2, x0         // 目标地址 = start_first_cpu
+mov   x9, #0x3c5          // EL1h, DAIF 全屏蔽
+msr   spsr_el2, x9
+mov   x9, #1
+lsl   x9, x9, #31         // HCR_EL2.RW = 1
+msr   hcr_el2, x9
+msr   cptr_el2, xzr
+isb
+eret
+```
+
+这条路径已在实机上跑通（`CurrentEL` 从 `0x8` 变 `0x4`）【C】。
+
 `struct boot_args`（`pexpert/pexpert/arm64/boot.h:56-77`）要填的字段：
 
 ```c
@@ -204,7 +223,12 @@ LK 源码不在手上（`uboot_a/b` 是展锐定制二进制，release: user）�
 
 ## 五、分阶段计划
 
-### M0 裸机 stub：把「LK 交接契约」测实（1 个晚上）
+### M0 裸机 stub：把「LK 交接契约」测实 —— **已完成，见 `docs/m0-bringup-report.md`**
+
+> 实测结论：入口在 **EL2**、`x0` = `0x86000000` 的 vendor FDT（与 Android 在跑的一致）、
+> 可以自己降到 EL1、GICv3 系统寄存器可用、4K 页粒度可用、PA 40 位、CNTFRQ 26MHz、
+> PSCI 0.2 副核全 OFF（`CPU_ON` 首次尝试导致 LK panic 重启循环，暂缓）。
+> 报告通道：ramoops console 区（`0xfffb0000`）+ `adb cat /sys/fs/pstore/console-ramoops-0`。
 
 - 工具链：`clang -target aarch64-none-elf` + `ld.lld`，本机已验证可用（见六）。
 - 打包：把 stub 当成 boot_b 的 kernel（沿用 `e5-linux/kernel/build-boot-image.py`），LK 会装到 0x80080000 并跳过去。
