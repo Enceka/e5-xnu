@@ -1,0 +1,7 @@
+
+Project Silicium for Rongyue E5
+Firmware Version 4.0 Build at 00:46:55 on Oct 23 2026
+
+MMU InMMU: 39 regions
+MMU: map valid
+MMU: HOBs built, enabling
