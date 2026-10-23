@@ -366,11 +366,15 @@ adbd cannot run as root in production builds
       `CLEAR_MEMORY_ENABLED` 用 `0xAF` 毒化了已释放的页表页，
       `0xAF & TT_TYPE_MASK == TT_TYPE_TABLE_ENTRY` 让 `IsTableEntry()`
       把毒化页当成合法页表继续遍历（见 13.2）
-- [x] **已查明「神秘热复位」**：就是 `E5BringupDxe` 自己在 EndOfDxe 主动发的，
-      其 `DEBUG_INFO` 打印被 `PcdDebugPrintErrorLevel` 滤掉才显得「没运行」（见 13.3）
-- [ ] **当前卡点**：面板 320x480 只能给 40 列，而 `GraphicsConsoleDxe` 断言
-      ≥80 列后死循环。已把该驱动从 APRIORI/DXE 摘除，等上机验证 BDS 能否
-      走到 `E5BringupDxe` 的 EndOfDxe 转储（见 13.4）
+- [x] **「神秘热复位」已结案：其实没有热复位，是串口日志覆盖了自己。**
+      `27CFAC88`（ResetArch）安装成功、屏幕显示 DXE 一路跑到 EndOfDxe 转储，
+      `E5BringupDxe` 完整执行并主动复位回 LK。日志第 147 行的 GUID 被拦腰截断
+      就是证据——写游标 `mConsolePos` 每镜像一份、构造后即陈旧（见 13.3.1）
+- [ ] **DXE 已能跑到 EndOfDxe**：41 descriptors / 7 conventional / 73 MiB free
+      已从屏幕读到。等日志通道修好后重新采集，把这批转储落到文件里
+- [ ] **下一个卡点**：面板 320x480 只能给 40 列，而 `GraphicsConsoleDxe` 断言
+      ≥80 列后死循环，故 BDS 的图形控制台还没通。图形控制台留待做 40 列驱动
+      （见 13.4）
 - [ ] BDS / UFPLoader / DarwinBoot 尚未启用
 - [ ] eMMC 没有 EDK2 host 驱动，`SdDxe`/`EmmcDxe`/`Fat` 先不挂进 FV（M5 处理）
 - [ ] 只有单核跑 DXE（FD 里没有 `ArmPsciMpServicesDxe`），XNU 的 SMP 由 UniXNU 的 ArmCpu 负责
@@ -546,7 +550,7 @@ the CPU state`，`DEBUG_CODE_END()` 之后的寄存器 dump 与栈 dump 都执�
 permissions to active memory regions` 第一次完整打印出来（此前被截断在 42 字符），
 `MMU: bogus table entry` 诊断一次也没触发，崩溃彻底消失。
 
-### 13.3 热复位之谜：其实是 E5BringupDxe 自己
+### 13.3 热复位之谜：仍未结案（13.3 旧结论已被推翻）
 
 修掉 0xAF 之后，日志稳定停在：
 
@@ -562,13 +566,102 @@ DXE ResetSystem2: ResetType Warm, Call Depth = 1.
 `E5-BRINGUP: ENTRY REACHED`，并在 `e5.dsc` 里临时覆盖
 `PcdE5ResetAtEndOfDxe|FALSE`。
 
-结果：`E5-RESET-CALLER` **零次触发**，`ResetSystem2` 也消失，APRIORI 链从
-10 个驱动推进到全部 21 个，一路到 `[Bds] Entry...`。
+那一轮（13:40 / 13:48，日志 `dumps/uefi-report-134819.txt`）的结果是：
+`E5-RESET-CALLER` 零次触发，`ResetSystem2` 消失，APRIORI 链从 10 个驱动推进到
+21 个，一路到 `[Bds] Entry...`。当时据此写下结论：热复位就是
+`E5BringupDxe` 在 EndOfDxe 自己发的，只是 `DEBUG_INFO` 被过滤掉了。
 
-结论：那次热复位就是 `E5BringupDxe` 自己在 EndOfDxe 里主动发的
-（`PcdE5ResetAtEndOfDxe` 默认 TRUE），只是它的 `DEBUG_INFO` 打印在
-`PcdDebugPrintErrorLevel` 下没出来，造成「它没运行」的错觉。
-诊断目的达成后该覆盖已删除，恢复默认 TRUE。
+**这个结论是错的。** 14:08 那一轮（`dumps/uefi-report-140848.txt`）把
+`PcdE5ResetAtEndOfDxe` 覆盖删掉、恢复默认 TRUE 之后，热复位确实回来了，但它
+出现的位置根本轮不到 `E5BringupDxe`：
+
+| 证据 | 14:08 实测 |
+| --- | --- |
+| `E5-BRINGUP` 打印次数 | **0** |
+| `FFS(8F2A64D1`（`E5BringupDxe` 的 DEPEX 求值） | **0** |
+| 复位发生时已派发的驱动数 | **10**（止于 `ResetSystemRuntimeDxe`） |
+| `27CFAC88`（ResetArch）安装 | **从未打印** |
+| `[Variable]END_OF_DXE is signaled` | **缺失**（13:48 那轮有） |
+
+也就是说 `E5BringupDxe` 在这一轮里连 DEPEX 都没被求值过，更谈不上在 EndOfDxe
+发复位。**「热复位来自 E5BringupDxe」不成立。**
+
+剩下的客观事实：
+
+- `E5-RESET-CALLER` 报的 `CallerReturnAddress=0x8568E4F0` 落在 DXE 堆区间内，
+  不属于该轮任何已装载镜像（该轮最高装载基址 `0x85A30000`）。它恰好落在 13:48
+  那轮 `HiiDatabase.efi`（`0x8568C000`+0x26000）的区间里，而那一轮的镜像在
+  本轮并不存在——最可能是上一次启动残留在内存里的旧内容。已反汇编确认
+  `RuntimeServiceResetSystem` 序言里 `mov x23, x30` 之前没有 `bl`，所以这个值
+  是真实的入口 `x30`，不是被 `RETURN_ADDRESS` 宏弄脏的。
+- LK 的两次尝试产生的日志逐行相同（只有地址不同），说明这个复位是确定性的，
+  不是随机内存损坏。
+- `InitializeResetSystem` 里复位只能发生在
+  `gRT->ResetSystem = RuntimeServiceResetSystem`（已挂钩，所以 `E5-RESET-CALLER`
+  能打印）之后、`InstallMultipleProtocolInterfaces` 打出 `27CFAC88` 之前。
+- 该函数序言与尾部已反汇编确认：`ASSERT_PROTOCOL_ALREADY_INSTALLED` 走
+  `DebugAssert`（只 `CpuDeadLoop`，不调 `ResetSystem`），全函数没有任何
+  `ResetSystem` 调用点。
+
+**必须承认的方法论错误**：13:48 到 14:08 之间同时改了两个变量——删掉
+`PcdE5ResetAtEndOfDxe` 覆盖、以及把 `GraphicsConsoleDxe` 从 APRIORI/DXE 摘除。
+所以「摘掉 GraphicsConsoleDxe 导致退化」这个说法同样**未经证明**，它是和 PCD 覆盖
+一起变的。
+
+### 13.3.1 结案：不是热复位，是**日志自己覆盖了自己**
+
+14:46 那一轮（`dumps/uefi-report-144622.txt`）在
+`InitializeResetSystem` 里加了分段打点，结果把整件事彻底翻转：
+
+```
+InstallProtocolInterface: 27CFAC88-46CC-11D4-9A38-0090273FC14D 0
+InstallProtocolInterface: 9DA34AE0-EAF9-4BBF-E5-RS: step3 install returned Success
+E5-RESET-CALLER: ResetType=1 ResetStatus=0x0 CallerReturnAddress=0x8568E4F0
+```
+
+`27CFAC88` 是 ResetArch，**它安装成功了**；`step3 install returned Success` 也证明
+`InstallMultipleProtocolInterfaces` 返回成功。同时手机屏幕上是完整的
+`E5-BRINGUP: map[30] BsData ...` / `E5-BRINGUP: 41 descriptors, 7 conventional,
+73 MiB free` / `E5-BRINGUP: ===== end of DXE dump complete =====` /
+`E5-BRINGUP: resetting to hand control back to LK`——**DXE 一路跑到了 EndOfDxe，
+E5BringupDxe 完整执行，并且是它自己主动复位回 LK 的。**
+
+那串口日志为什么看起来停在 10 个驱动、还缺 `E5-BRINGUP`？因为第 147 行是这行：
+
+```
+InstallProtocolInterface: 9DA34AE0-EAF9-4BBF-E5-RS: step3 install returned Success
+```
+
+对照 13:48 那轮同一行本应是：
+
+```
+InstallProtocolInterface: 9DA34AE0-EAF9-4BBF-8EC3-FD60226C44BE 859C6040
+```
+
+GUID 在 `4BBF-` 处被**拦腰截断**，后半截 `8EC3-FD60226C44BE 859C6040` 被
+`E5-RS: step3 install returned Success` 原地覆盖。这不是丢行，是**覆盖**。
+
+根因在 `SprdDebugSerialPortLib.c`：写游标 `mConsolePos` 是 `STATIC`，每个链接该
+库的 DXE 镜像各有一份私有副本。镜像构造时 `ConsoleAdopt()` 从 ramoops 头部读到
+当时的位置 P0，但构造完到该镜像真正执行之间，DXE Core 和其它镜像还在继续往 ring
+里写，已发布 size 已经推进到 P0+k；该镜像真正打印时用的仍是陈旧的 P0，于是从 P0
+开始写，**覆盖掉别人已经写好的 P0..P0+k**。
+
+**结论**：此前基于串口日志顺序做的全部取证（「10 个驱动停摆」「E5BringupDxe 从未
+被 DEPEX 求值」「`[Variable]END_OF_DXE` 缺失」「ResetArch 未安装」）都不可靠——
+它们是日志被覆盖后残留的假象，不是固件行为。`CallerReturnAddress=0x8568E4F0`
+同理：那是被覆盖区域里残留的旧字节，不是真实返回地址。
+
+修复：`SerialPortWrite()` 在逐字节循环前重新 `ConsoleAdopt()`，让已发布的 ramoops
+头成为唯一权威游标，每次写之前重新对齐。
+
+**教训**：把「日志里没有」直接当成「固件没做」是错误推理。日志通道本身也是被测
+系统的一部分，必须先证明它可信，再用它下结论。
+
+当前正在做的隔离实验：在 `InitializeResetSystem` 的
+`ASSERT_PROTOCOL_ALREADY_INSTALLED` 前后、挂钩之后、`InstallMultipleProtocolInterfaces`
+返回之后各加一条 `E5-RS:` 打点，并在 `RuntimeServiceResetSystem` 入口 dump 栈，
+用来判定复位究竟落在哪一步。
 
 ### 13.4 下一个卡点：面板永远到不了 80 列
 
