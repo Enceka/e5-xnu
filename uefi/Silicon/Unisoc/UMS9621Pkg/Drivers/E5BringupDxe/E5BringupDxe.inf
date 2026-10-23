@@ -30,12 +30,16 @@
   BaseMemoryLib
   MemoryAllocationLib
   CpuLib
+  DevicePathLib
+  PeCoffGetEntryPointLib
 
 [Guids]
   gEfiEndOfDxeEventGroupGuid
 
 [Protocols]
   gEfiGraphicsOutputProtocolGuid
+  gEfiFirmwareVolume2ProtocolGuid
+  gEfiLoadedImageProtocolGuid
 
 [Pcd]
   gUms9621PkgTokenSpaceGuid.PcdE5ResetAtEndOfDxe
