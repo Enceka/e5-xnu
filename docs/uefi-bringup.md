@@ -356,8 +356,21 @@ adbd cannot run as root in production builds
 - [x] 看门狗确实能复位（`hw_rst_mode==2` + `hw watchdog int raw status 0x8`）；但生效的是 LK 留的
       约 300 秒超时，shim 自己的 60 秒因缺 `LD_BUSY` 轮询而没写进 LOAD
 - [x] 看门狗布置与 EndOfDxe 主动复位已编进镜像
-- [ ] **未定位**：进 SEC 后不到 1 秒就被看门狗复位（park 版能活 4 分 51 秒，只差 `br x5` 这一条）
-- [ ] DXE 派发是否完成（至今没拿到任何 `Silicium`/`DXE` 日志）
+- [x] **已定位并修复**：SEC 内挂死的根因是 `UART0-3` 映射长度写成 `0x10000`，
+      控制台 `UART1 = 0x20210000` 未映射，MMU 一开就翻译失败（见第十一节）
+- [x] 日志持久化改走 ramoops **dmesg 区**（不带 ZAP_OLD，重启后仍在），
+      不需要给 eMMC 写 host 驱动（见第十二节）
+- [x] **固件已贯穿整个 DXE**：SEC 全部阶段跑完、FV 解压、DxeCore 加载、
+      APRIORI 里 21 个驱动全部派发，并进入 BDS（`[Bds] Entry...`）
+- [x] **已定位并修复 DXE 首个崩溃**：根因是 `PcdDebugPropertyMask` 的
+      `CLEAR_MEMORY_ENABLED` 用 `0xAF` 毒化了已释放的页表页，
+      `0xAF & TT_TYPE_MASK == TT_TYPE_TABLE_ENTRY` 让 `IsTableEntry()`
+      把毒化页当成合法页表继续遍历（见 13.2）
+- [x] **已查明「神秘热复位」**：就是 `E5BringupDxe` 自己在 EndOfDxe 主动发的，
+      其 `DEBUG_INFO` 打印被 `PcdDebugPrintErrorLevel` 滤掉才显得「没运行」（见 13.3）
+- [ ] **当前卡点**：面板 320x480 只能给 40 列，而 `GraphicsConsoleDxe` 断言
+      ≥80 列后死循环。已把该驱动从 APRIORI/DXE 摘除，等上机验证 BDS 能否
+      走到 `E5BringupDxe` 的 EndOfDxe 转储（见 13.4）
 - [ ] BDS / UFPLoader / DarwinBoot 尚未启用
 - [ ] eMMC 没有 EDK2 host 驱动，`SdDxe`/`EmmcDxe`/`Fat` 先不挂进 FV（M5 处理）
 - [ ] 只有单核跑 DXE（FD 里没有 `ArmPsciMpServicesDxe`），XNU 的 SMP 由 UniXNU 的 ArmCpu 负责
@@ -379,3 +392,213 @@ adbd cannot run as root in production builds
   `10 00 00 14`（shim 的 `b`）、偏移 0x1008 处 `00 00 08 00`（text_offset 0x80000）。
 - 物理断电重启后 RTC 归零，`uboot_log` 里时间戳变成 `1970-01-01_08-0x-xx`，此前那一段被环形缓冲
   覆盖，所以 07:21 那一轮自己的复位现场没能留下 —— 长重启风暴会吃掉日志，取证要及时。
+
+## 十一、MMU 挂死根因：控制台 UART 没有映射（2026-10-23 下午）
+
+### 11.1 定位方法
+
+在 `ArmConfigureMmu` 的各个阶段插入整屏纯色标记（`E5Mark`，直接写
+`0xBE000000` 的 RGB565 帧缓冲），用屏幕颜色当作断点：
+
+| 标记 | 颜色 | 位置 |
+| --- | --- | --- |
+| M1 | `0xF800` 红 | 调用 `ArmConfigureMmu` 前 |
+| M2 | `0x07E0` 绿 | 39 个 region 映射循环之后，`ArmSetMAIR` 前 |
+| M3 | `0x001F` 蓝 | `ArmSetTTBR0` 之后 |
+| M4 | `0xFFE0` 黄 | 四个 `ArmEnable*` 之后，`ArmEnableMmu()` 前 |
+| M5 | `0x07FF` 青 | `ArmEnableMmu()` 之后 |
+| M6 | `0xF81F` 品红 | `ArmConfigureMmu` 返回后 |
+| M7 | `0xFC00` 橙 | MMU 打开后的第一次控制台写之后 |
+| M8 | `0x0010` 深绿 | `MemoryPeim` 返回前 |
+
+屏幕停在 **M6 品红**说明 MMU 已经成功打开、`ArmConfigureMmu` 正常返回，
+故障在其后。
+
+### 11.2 根因
+
+`MemoryMapLib.c` 里控制台所在的串口区域长度写错了一位：
+
+```c
+{"UART0-3", 0x20200000, 0x00010000, ...}   // 错：只覆盖 UART0
+{"UART0-3", 0x20200000, 0x00040000, ...}   // 对：覆盖 UART0..UART3
+```
+
+厂商 DTS 的 `ap-apb` 是 `ranges = <0 0 0x20200000 0x100000>`，四个串口在
+`serial@0/@10000/@20000/@30000`，即 `0x20200000/0x20210000/0x20220000/0x20230000`；
+内核 cmdline 也是 `console=ttyS1`。而控制台驱动用的是：
+
+```c
+#define UART1_BASE  0x20210000ULL
+```
+
+**正好落在未映射的空洞里**。MMU 关闭时访问走恒等映射所以一切正常（这就是为什么整份
+调试 trace 都能打出来）；`ArmEnableMmu()` 一执行，紧接着的
+`DEBUG (("MMU: enabled\n"))` 第一次写 `0x20210000` 就翻译失败，
+跳到 LK 留下的异常向量，LK panic 后复位，表现为「紫屏后自己重启回 Android」。
+
+**教训**：MMU 之前能跑通不代表地址被映射了。设备寄存器地址必须逐个和内存映射表对账。
+
+## 十二、日志持久化：改用 ramoops 的 dmesg 区
+
+ramoops 的 console/pmsg 区带 `PRZ_FLAG_ZAP_OLD`，每次 Android 启动都会被清掉；
+但 **dmesg 区（`0xFFF80000`，64 KiB）不带这个标志，重启后仍在**。
+所以把控制台镜像进 dmesg zone 0，并在载荷开头放内核消息头：
+
+```
+struct persistent_ram_buffer { u32 sig; s32 start; s32 size; u8 data[]; }   // 12 字节
+sig = 0x43474244 ("DBGC")
+payload 必须以 "====" 开头，start 必须为 0
+```
+
+`DMESG_PREFIX = "====0.000000-0\n"`（15 字节），`CONSOLE_CAP = 0x8000 - 12 - 15 = 32741`。
+这样 Android 起来后直接 `cat /sys/fs/pstore/dmesg-ramoops-0` 就能读到完整的 UEFI 日志，
+**不需要给 eMMC 写 host 驱动**（原本估计要 2~4 天的工作直接省掉）。
+
+> **和原计划的差异**：早先的方案是「把日志写到 boot 镜像尾部」（参考 e5-linux 的做法），
+> 那需要 EDK2 侧有 eMMC host 驱动才能写块设备。ramoops dmesg 区走的是内核已经维护好的
+> 保留内存，固件只要往固定物理地址写，落地成本低一个数量级，所以改走这条路。
+> 代价是容量固定 32 KiB（环形缓冲），日志长了会挤掉最早的部分。
+
+配套修的三处：
+
+1. **日志连续性**：DXE 阶段每个模块都会重新构造 `SerialPortLib`，原先构造器把
+   `mConsolePos` 清零，DXE 日志从偏移 0 覆盖 SEC 日志。改为 `ConsoleAdopt()`
+   从已有的 ramoops 头部读出上次写到哪，接着写。
+2. **SEC trace 撑爆缓冲**：`UpdateRegionMappingRecursive` 每个 region 每级打一行，
+   39×4 = 156 行约 10.5 KiB，占掉 32741 的 1/3。改为末尾一行
+   `MMU: N regions mapped`。
+3. **异常处理器在 dump 前二次崩溃**：`PcdDebugPropertyMask|0x2F` 打开了
+   `DEBUG_CODE_ENABLE`，`DumpCpuContext()` 里 `DEBUG_CODE` 块的栈回溯只判断
+   `FP != 0` 就解引用，异常现场 FP 是垃圾值时立刻二次异常，日志停在
+   `Recursive exception occurred while dumping the CPU state`，**寄存器全丢**。
+   改为 `0x2B`（清 bit2）让回溯不编译，并把寄存器 dump 提到回溯之前。
+
+## 十三、DXE 首个崩溃（当前卡点）
+
+`MMU: enabled` 之后固件一路跑过 SEC 全部阶段并进入 DXE：
+
+```
+MMU: 39 regions mapped
+MMU: enabled
+SEC: memory HOBs done
+SEC: platform HOBs done (Success)
+SEC: HOB list ok, 78 entries
+SEC: constructors done
+SEC: FV decompressed (Success)
+SEC: loading DXE core
+Loading DxeCore at 0x0085B5D000 EntryPoint=0x0085B5F008
+Loading driver at 0x00085742000 EntryPoint=0x0008574308C PcdDxe.efi
+Loading driver at 0x00085A10000 ... ReportStatusCodeRouterRuntimeDxe.efi
+Loading driver at 0x00085A00000 ... StatusCodeHandlerRuntimeDxe.efi
+Loading driver at 0x000859F0000 ... RuntimeDxe.efi
+Loading driver at 0x00085721000 EntryPoint=0x0008572304C ArmCpuDxe.efi
+
+Synchronous Exception at 0x000000008566D7E0
+  X1  0xAFAFAFAFAFAFAFAF      X19 0xAFAFAFAFAFAFAFAF
+  X28 0x0000000072767264      FP  0x00000000804BFBA0   LR 0x000000008566D7BC
+  SP  0x00000000804BFBA0      ELR 0x000000008566D7E0
+  ESR 0x96000004              FAR 0xAFAFAFAFAFAFAFB0
+  ESR : EC 0x25  IL 0x1  ISS 0x00000004
+  Data abort: Translation fault, zeroth level
+```
+
+判读（**本节当时的结论已被证伪，正确根因见 13.2**）：
+
+- `FAR = 0xAFAFAFAFAFAFAFB0`，而 `0xAF` 正是 `PcdDebugClearMemoryValue|0xAF`。
+  当时判断成「解引用了一个未初始化的池指针」——**错**，真实机制是页表被毒化。
+- 三行 `Image Section Alignment(0x1000) does not match Required Alignment (0x10000)`
+  来自 `MemoryProtection`，是 64 KiB 与 4 KiB 粒度不匹配，**非致命**。
+
+### 13.2 真正的根因：`CLEAR_MEMORY` 毒化了已释放的页表页
+
+关键一步是把地址拆开算，而不是停在「0xAF 看起来像未初始化」：
+
+```
+GetOutputAddress(0xAFAFAFAFAFAFAFAF) = 0xAFAFAFAFAFAFA000   // 页基址
+FAR 0xAFAFAFAFAFAFAFB0 - 0xAFAFAFAFAFAFA000 = 0xFB0          // 页内偏移
+0xFB0 / 8 = 502                                              // 表项下标
+0xAF & TT_TYPE_MASK(0x3) = 0x3 = TT_TYPE_TABLE_ENTRY          // 类型位
+```
+
+一个被 `0xAF` 填满的页，每个 8 字节表项的低 2 位都恰好等于
+`TT_TYPE_TABLE_ENTRY`，于是 `ArmMmuLibCore.c:264-278` 的 `IsTableEntry()`
+把它当成**合法页表**继续遍历，解引用该「表项」指向的地址时触发
+Translation fault。
+
+谁填的 `0xAF`：`PcdDebugPropertyMask` 的 bit3 `CLEAR_MEMORY_ENABLED(0x08)`
+原本是开的，`CoreFreePages` 会用 `PcdDebugClearMemoryValue(0xAF)` 填满每个
+刚释放的页——**包括 ArmMmuLib 交还的页表页**。父级表项仍指向这些页，所以一次
+`FreePages` 之后页表自己就变成了陷阱。
+
+修复：`PcdDebugPropertyMask` `0x2B -> 0x23`，清掉 bit3。
+bit2 `DEBUG_CODE_ENABLE(0x04)` 也必须一起清——它把
+`CpuExceptionHandlerLib` 的栈回溯 walker 编进二进制，而该 walker 在同一个
+毒化现场会二次异常，日志永远停在 `Recursive exception occurred while dumping
+the CPU state`，`DEBUG_CODE_END()` 之后的寄存器 dump 与栈 dump 都执行不到。
+寄存器 dump 和 `DescribeExceptionSyndrome()` 已移到 `DEBUG_CODE_BEGIN()` 之前，
+这样即使回溯失败，现场仍然打得出来。
+
+注意 `DEBUG_CODE_BEGIN` 在这份 MdePkg 里是**运行时**开关而非编译期开关
+（`MdePkg/Include/Library/DebugLib.h:566`，由 `PcdDebugPropertyMask` bit2 判定），
+所以那个字符串本身无法从镜像里删掉，只能让它不被执行。
+
+改完后 `InitializePageAttributesForMemoryProtectionPolicy: applying strict
+permissions to active memory regions` 第一次完整打印出来（此前被截断在 42 字符），
+`MMU: bogus table entry` 诊断一次也没触发，崩溃彻底消失。
+
+### 13.3 热复位之谜：其实是 E5BringupDxe 自己
+
+修掉 0xAF 之后，日志稳定停在：
+
+```
+DXE ResetSystem2: ResetType Warm, Call Depth = 1.
+```
+
+而 `E5-BRINGUP` 一条都没有。看上去自相矛盾：平台里唯一调用 `EfiResetWarm`
+的地方就是 `E5BringupDxe.c`，可它显然没运行。
+
+解法不是继续读代码，而是让固件自证：在 `RuntimeServiceResetSystem` 入口加一条
+`DEBUG_ERROR` 打印 `RETURN_ADDRESS(0)`，在 `E5BringupDxe` 入口加
+`E5-BRINGUP: ENTRY REACHED`，并在 `e5.dsc` 里临时覆盖
+`PcdE5ResetAtEndOfDxe|FALSE`。
+
+结果：`E5-RESET-CALLER` **零次触发**，`ResetSystem2` 也消失，APRIORI 链从
+10 个驱动推进到全部 21 个，一路到 `[Bds] Entry...`。
+
+结论：那次热复位就是 `E5BringupDxe` 自己在 EndOfDxe 里主动发的
+（`PcdE5ResetAtEndOfDxe` 默认 TRUE），只是它的 `DEBUG_INFO` 打印在
+`PcdDebugPrintErrorLevel` 下没出来，造成「它没运行」的错觉。
+诊断目的达成后该覆盖已删除，恢复默认 TRUE。
+
+### 13.4 下一个卡点：面板永远到不了 80 列
+
+热复位消失后，最后一个 APRIORI 驱动 `GraphicsConsoleDxe` 断言：
+
+```
+GraphicsConsole video resolution 320 x 480
+ASSERT [GraphicsConsoleDxe] GraphicsConsole.c(245): (MaxColumns >= 80) && (MaxRows >= 25)
+```
+
+面板物理分辨率就是 320x480（Android 侧 `wm size` 实测确认），字形 8x19，所以
+`MaxColumns = 320/8 = 40`，而 UEFI 规范要求 ≥80 列——**物理上永远不可能满足**。
+断言后 `CpuDeadLoop`，AP 看门狗 300 秒超时复位，LK 重试一次仍失败，回落到
+Android（日志里那两段重复的驱动加载就是 LK 的两次尝试）。
+
+处理：把 `GraphicsConsoleDxe` 从 `APRIORI.inc` 与 `DXE.inc` 中移除（只改平台自有
+配置，不碰上游代码）。串口控制台 `SimpleTextInOutSerial` 一直正常，日志通道不受
+影响。图形控制台留待后面做一个支持 40 列的驱动。
+
+注意 `[FV.FvMain]` 的 `NumBlocks = 0` 会让 GenFds 按内容自动收缩 FV，所以删掉驱动
+之后 `free` 不会变大（仍只是对齐尾数），真实节省体现在 total 与
+`FVMAIN_COMPACT used` 上。
+
+### 13.1 实机运行记录（2026-10-23 下午）
+
+| 时间 | 镜像 | 屏幕 | 日志 | 结论 |
+| --- | --- | --- | --- | --- |
+| 11:53 | M1..M6 标记 | 品红（M6） | 无 | MMU 已开，故障在其后 |
+| 12:03 | 修 UART 映射 + M7/M8 | — | 739 B，DXE 日志 | **MMU 修复生效，进入 DXE** |
+| 12:25 | 修日志连续性 + trace + 异常处理器 | — | 6861 B，完整寄存器 | 定位到 DXE 首个崩溃 |
+| 13:16 | `PcdDebugPropertyMask 0x2B` + MMU 越界诊断 | — | 8615 B，10 个驱动 | **0xAF 毒化修复，崩溃消失** |
+| 13:40 | 加 `E5-RESET-CALLER` + `ENTRY REACHED`，覆盖 `PcdE5ResetAtEndOfDxe|FALSE` | 紫屏 | 33283 B，21 个驱动 + `[Bds] Entry` | **热复位消失**，卡在 `GraphicsConsoleDxe` 80x25 断言 |
+
