@@ -419,9 +419,10 @@ ConsolePutc (
   published size back is all it takes to continue writing behind them, so SEC
   and DXE output end up in one record instead of DXE replacing SEC.
 
-  Header[1] (start) is not consulted: ConsolePublish always writes it as 0, so
-  the record is prefix followed by the ring and the ring length is simply
-  size - DMESG_PREFIX_LEN.
+  The dmesg record is always prefix followed by the ring, so its start field
+  stays 0 and the ring length is simply size - DMESG_PREFIX_LEN.  That size
+  only pins the position until the ring wraps; from then on it is the constant
+  capacity, and the moving position is read from the plain zone's start.
 **/
 STATIC
 VOID
@@ -430,13 +431,15 @@ ConsoleAdopt (
   )
 {
   volatile UINT32  *Header;
+  volatile UINT32  *HeaderPlain;
   UINT32           Sig;
   UINT32           Size;
   UINT32           Pos;
 
-  Header = (volatile UINT32 *)(UINTN)CONSOLE_ZONE_DMESG;
-  Sig    = Header[0];
-  Size   = Header[2];
+  Header      = (volatile UINT32 *)(UINTN)CONSOLE_ZONE_DMESG;
+  HeaderPlain = (volatile UINT32 *)(UINTN)CONSOLE_ZONE;
+  Sig         = Header[0];
+  Size        = Header[2];
 
   if ((Sig != PRZ_SIG) || (Size <= DMESG_PREFIX_LEN)) {
     //
@@ -452,9 +455,22 @@ ConsoleAdopt (
   // that reached the capacity had wrapped, which is the state ConsolePutc
   // would have left mConsoleWrapped in.
   //
+  // A wrapped ring publishes the capacity, a constant, so the size stops
+  // changing and the write position can only come from the plain zone, which
+  // keeps it in start.  That zone is rewritten by the kernel on every Android
+  // boot, so a start that is not ours leaves the position unknown and the
+  // capacity is the safe answer: ConsolePutc then restarts the ring.
+  //
   Pos = Size - DMESG_PREFIX_LEN;
   if (Pos >= CONSOLE_CAP) {
-    mConsolePos     = CONSOLE_CAP;
+    mConsolePos = CONSOLE_CAP;
+    if (HeaderPlain[0] == PRZ_SIG) {
+      mConsolePos = HeaderPlain[1];
+      if (mConsolePos > CONSOLE_CAP) {
+        mConsolePos = CONSOLE_CAP;
+      }
+    }
+
     mConsoleWrapped = TRUE;
   } else {
     mConsolePos     = Pos;
@@ -511,6 +527,12 @@ SerialPortWrite (
   if (Buffer == NULL) {
     return 0;
   }
+
+  //
+  // 每次写前从已发布的头部重新对齐游标：mConsolePos 只是本镜像的私有副本，
+  // 构造之后其它镜像仍在往 ring 里写，沿用陈旧游标会覆盖别人已写好的内容。
+  //
+  ConsoleAdopt ();
 
   for (Index = 0; Index < NumberOfBytes; Index++) {
     UartPutc ((CHAR8)Buffer[Index]);
