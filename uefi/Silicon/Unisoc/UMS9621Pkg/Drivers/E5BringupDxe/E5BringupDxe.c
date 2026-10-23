@@ -140,7 +140,7 @@ STATIC VOID E5DumpGraphics (VOID)
 
 STATIC VOID E5ResetToLoader (VOID)
 {
-  DEBUG ((DEBUG_INFO, "E5-BRINGUP: resetting to hand control back to LK\n"));
+  DEBUG ((DEBUG_ERROR, "E5-BRINGUP: resetting to hand control back to LK\n"));
   gRT->ResetSystem (EfiResetWarm, EFI_SUCCESS, 0, NULL);
 
   //
@@ -180,6 +180,8 @@ EFI_STATUS EFIAPI E5BringupInitialize (
 {
   EFI_STATUS  Status;
   EFI_EVENT   Event;
+
+  DEBUG ((DEBUG_ERROR, "E5-BRINGUP: ENTRY REACHED\n"));
 
   Status = gBS->CreateEventEx (
                   EVT_NOTIFY_SIGNAL,
