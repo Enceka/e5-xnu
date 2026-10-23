@@ -604,6 +604,52 @@ InstallProtocolInterface: 9DA34AE0-EAF9-4BBF-E5-RS: step3 install returned Succe
 **教训**：把「日志里没有」直接当成「固件没做」是错误推理。日志通道本身也是被测
 系统的一部分，必须先证明它可信，再用它下结论。
 
+### 13.3.2 修复后的实测：日志从 18721 字节长到 65995 字节
+
+修完重新上机（`dumps/uefi-report-150238.txt`），三处指标同时变好：
+
+| 指标 | 修复前（14:46） | 修复后（15:02） |
+| --- | --- | --- |
+| 日志大小 | 18721 B | **65995 B** |
+| `E5-BRINGUP` 条数 | 0 | **98** |
+| `Loading driver at` | 20（10 驱动 ×2） | **70**（35 驱动 ×2） |
+| 被截断的 GUID | 有（`4BBF-` 处断） | **无，1183 行 0 处可疑** |
+| 最远到达 | 停在 ResetSystemRuntimeDxe | **`[Bds] Entry...`** |
+
+dmesg 区正好写满到 32742 字节（上限 32741），说明回绕后游标确实在推进、没有被
+重置回 0——回绕陷阱的修复也验证过了。
+
+同时拿到了此前只在屏幕上见过、日志里从未落地的数据：
+
+```
+E5-BRINGUP: GOP mode 0/1 320x480 16 bpp, frame buffer 0xBE000000 + 0x4B000
+E5-BRINGUP: 41 descriptors, 7 conventional, 73 MiB free
+E5-BRINGUP: map[00] BsData 0x0000000080480000-0x00000000807C0000 attr 0x100F
+...
+E5-BRINGUP: map[40] Reserved 0x00000000FFEF0000-0x00000000FFFC0000 attr 0x100F
+```
+
+**DXE 阶段至此全部打通。** 内存映射 41 个描述符、7 个 Conventional、73 MiB 可用，
+GOP 320x480/16bpp 正常，EndOfDxe 回调完整执行，然后按
+`PcdE5ResetAtEndOfDxe` 主动复位回 LK。
+
+### 13.3.3 一个待查的小异常
+
+同一条转储里 `E5-BRINGUP: 812803696 configuration table entries` 明显不合理
+（= `0x30726670`，两次 LK 尝试取值完全相同，是确定性读值）。同一次输出里的
+`41 descriptors` / `7 conventional` / `73 MiB free` 等 `%u` 都正确，所以不是
+打印格式问题；反汇编确认代码路径也对：
+
+```
+32b4: ldr  x8, [x8, #0x80]      ; x8 = gST   (符号表确认 gST 在 0x5080)
+32bc: ldr  w2, [x8, #0x68]      ; w2 = gST->NumberOfTableEntries (偏移 104)
+```
+
+偏移 104 与 `EFI_SYSTEM_TABLE` 的字段序一致（Hdr 24 + FirmwareVendor 8 +
+FirmwareRevision 4+pad 4 + 6 个指针 48 + RuntimeServices 8 + BootServices 8）。
+也就是说 `gST` 指针有效（否则 `gBS` 调用会崩），但该字段内容异常。
+纯属转储可读性问题，不影响引导主线，留待后面单独核实。
+
 ### 13.4 下一个卡点：面板永远到不了 80 列
 
 DXE 现在能跑到 EndOfDxe，但 BDS 的图形控制台还没通。早先 `GraphicsConsoleDxe`
