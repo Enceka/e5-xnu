@@ -94,6 +94,13 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdBootManagerMenuFile|{ 0x83, 0xA5, 0x04, 0x7C, 0x3E, 0x9E, 0x1C, 0x4F, 0xAD, 0x65, 0xE0, 0x52, 0x68, 0xD0, 0xB4, 0xD1 }
 
   #
+  # Stop resetting at EndOfDxe now that BDS finally has a boot target.
+  # With the default (TRUE) E5BringupDxe resets to LK right after its dump, so
+  # the Shell never gets launched and the DXE-after path stays untested.
+  #
+  gUms9621PkgTokenSpaceGuid.PcdE5ResetAtEndOfDxe|FALSE
+
+  #
   # SMBIOS.
   #
   gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemManufacturer|"Rongyue"
