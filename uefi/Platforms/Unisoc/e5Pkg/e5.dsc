@@ -42,6 +42,41 @@
   gArmPlatformTokenSpaceGuid.PcdCPUCorePrimaryStackSize|0x40000
 
   #
+  # 调试打印级别：0x8007EECF = ERROR(0x80000000) | INFO(0x40) | DISPATCH(0x80)
+  #                            | 原有的 0x0007EE0F 其余位。
+  #
+  # 0x0F -> 0xCF：打开 bit6 DEBUG_INFO 与 bit7 DEBUG_DISPATCH。前者让各库的
+  # INFO 级 trace 可见，后者让 DXE Core 在每次派发驱动时打印
+  # "Loading driver at ... EntryPoint=..."，崩溃时可直接指名是哪个驱动。
+  #
+  # 同时清掉 bit25 DEBUG_PAGING(0x02000000)：该位原先是为定位 SEC 的 MMU 挂死点
+  # 临时打开的（根因是 MemoryMapLib 里 UART0-3 长度写成 0x10000，控制台 UART1
+  # 0x20210000 未被映射），问题已修复。DXE 阶段 MemoryProtection 会频繁调用
+  # ArmSetMemoryAttributes，残留的 PAGING 输出会再次撑爆 32741 字节的 ramoops
+  # 环形缓冲，把 SEC 阶段的日志挤掉，而我们需要 SEC+DXE 连续日志。
+  #
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x8007EECF
+
+  #
+  # 调试属性掩码：0x2F -> 0x2B -> 0x23，依次清掉 bit2 DEBUG_CODE_ENABLE(0x04)
+  # 与 bit3 CLEAR_MEMORY_ENABLED(0x08)。
+  #
+  # DEBUG_CODE_ENABLE 会把 DEBUG_CODE_BEGIN()/DEBUG_CODE_END() 之间的代码编进
+  # 二进制（CpuExceptionHandlerLib 里是栈回溯 walker）。该 walker 在池指针被
+  # 0xAF 填满的崩溃现场会二次异常，日志停在 "Recursive exception occurred while
+  # dumping the CPU state"，DEBUG_CODE_END() 之后的栈 dump 永远执行不到。
+  # 关掉 bit2 后整段回溯代码不编译，寄存器 dump 与栈 dump 均可正常输出。
+  #
+  # CLEAR_MEMORY_ENABLED 会让 FreePages 用 PcdDebugClearMemoryValue(0xAF) 填满
+  # 刚释放的页，包括 ArmMmuLib 释放的页表页。0xAF 的低 2 位是 0x3，恰好等于
+  # TT_TYPE_TABLE_ENTRY，于是父级表项仍指向的毒化页被 IsTableEntry() 当成合法
+  # 页表继续遍历，解引用 0xAFAFAFAFAFAFA000 触发 Translation fault（FAR
+  # 0xAFAFAFAFAFAFAFB0）。关掉 bit3 后释放页不再被毒化。
+  # 保留的位：ASSERT_ENABLE(0x01) | PRINT_ERROR(0x02) | ASSERT_DEADLOOP(0x20)。
+  #
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x23
+
+  #
   # SMBIOS.
   #
   gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemManufacturer|"Rongyue"
