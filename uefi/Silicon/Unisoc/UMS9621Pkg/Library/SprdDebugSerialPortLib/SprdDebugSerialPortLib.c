@@ -2,21 +2,34 @@
 #
   Debug serial port for the E5 (Unisoc UMS9621).
 
-  Two sinks, both measured working from bare metal (see the M0 report):
+  Three sinks.  Only the panel is readable today; the other two are kept
+  because they cost nothing once they are disabled (see below) and because
+  they are the channels we will use once their wiring is understood.
 
    1. UART1 at 0x20210000 -- the SoC console UART.  Stock firmware runs it at
       921600 8n1, mainline Linux at 115200.  The physical test points are not
       identified yet, so this sink is currently write-only and invisible.
 
-   2. The ramoops console zone at 0xFFFB0000 -- a persistent-RAM buffer that
-      survives a warm reset.  Android mounts it as
-      /sys/fs/pstore/console-ramoops-0, so after the LK watchdog resets the
-      board we can read the whole UEFI boot log with
-        adb root; adb exec-out cat /sys/fs/pstore/console-ramoops-0
-      This is the primary bring-up channel.
+      The UART APB clock is never enabled, so the transmitter status bit
+      (UART_LSR.TX_OVER) never asserts and the original implementation burned
+      the full 256000 read timeout on *every* character.  With the MMU still
+      off in SEC each of those reads is a Device-memory access, so one
+      character of console output cost ~256000 uncached loads (~8 ms at
+      32 MHz APB, ~3 ms even at 200 MHz) and a single 80 column trace line
+      could cost the better part of a second.
 
-  The persistent_ram header is three little-endian u32: signature, start
-  offset of the oldest byte, number of valid bytes.
+      Since the sink is invisible, that timeout buys nothing.  UartPutc now
+      runs a one-shot probe: the first character that does not see TX_OVER
+      within a short budget latches mUartDead and the UART is never polled
+      again for the rest of the boot.  If the UART does answer, behaviour is
+      exactly what it always was (poll for TX_OVER, then write TXD).
+
+   2. The ramoops console zone at 0xFFFB0000 -- a persistent-RAM buffer that
+      survives a warm reset.  Android is supposed to mount it as
+      /sys/fs/pstore/console-ramoops-0, but pstore currently recovers nothing
+      from it, so it is written and not read.
+
+   3. The panel, which is the channel that actually works (see below).
 #
 
 */
@@ -31,15 +44,42 @@
 #define UART_TXD             0x00
 #define UART_LSR             0x08
 #define UART_LSR_TX_OVER     (1U << 15)
-#define UART_TX_TIMEOUT      256000U
+//
+// One-shot probe budget.  At 32 MHz APB a 921600 baud character takes ~35 us,
+// so 20000 reads of a Device-memory register is several character times and is
+// plenty to see a transmitter that is actually clocked.  It is also only ~1/13
+// of the old per-character cost, and it is paid exactly once per boot.
+//
+#define UART_PROBE_TIMEOUT   20000U
 
 #define PRZ_SIG              0x43474244U
 #define PRZ_HDR              12U
 #define CONSOLE_ZONE         0xFFFB0000ULL
-#define CONSOLE_CAP          (0x8000U - PRZ_HDR)
+//
+// The kernel console rewrites the console zone on every Android boot, so the
+// same log is mirrored into dmesg zone 0, which is created without ZAP_OLD and
+// survives as dmesg-ramoops-0.  pstore only recovers a dmesg record whose
+// payload opens with the kernel message header, so the first DMESG_PREFIX_LEN
+// payload bytes are reserved for it and the mirrored ring starts after them.
+//
+#define CONSOLE_ZONE_DMESG   0xFFF80000ULL
+#define DMESG_PREFIX         "====0.000000-0\n"
+#define DMESG_PREFIX_LEN     ((UINT32)(sizeof (DMESG_PREFIX) - 1))
+//
+// One capacity for both zones: the kernel zaps a zone whose published size
+// exceeds 0x8000 - PRZ_HDR, so the ring gives up the prefix bytes.
+// 12 + DMESG_PREFIX_LEN + CONSOLE_CAP == 0x8000, i.e. 12 + 15 + 32741.
+//
+#define CONSOLE_CAP          (0x8000U - PRZ_HDR - DMESG_PREFIX_LEN)
 
-STATIC UINT32  mConsolePos;
-STATIC BOOLEAN mConsoleWrapped;
+STATIC UINT32   mConsolePos;
+STATIC BOOLEAN  mConsoleWrapped;
+
+//
+// Set by the first character the UART fails to acknowledge; from then on the
+// UART is skipped entirely.  See the file header.
+//
+STATIC BOOLEAN  mUartDead;
 
 //
 // Framebuffer console.
@@ -52,6 +92,15 @@ STATIC BOOLEAN mConsoleWrapped;
 //
 // Geometry and pixel format measured from bare metal; see the M0 report.
 //
+// While SEC runs with the MMU off every framebuffer access is Device memory,
+// so the number of loads and stores here is what decides whether a debug trace
+// finishes before the 60 s AP watchdog expires.  Two rules follow:
+//
+//   * never touch a pixel the glyph does not cover, and
+//   * move whole rows with the widest store the alignment allows.
+//
+// Neither changes a single visible pixel.
+//
 
 #define FB_BASE     0xbe000000ULL
 #define FB_WIDTH    320U
@@ -63,6 +112,12 @@ STATIC BOOLEAN mConsoleWrapped;
 #define FB_CELL_H   16U
 #define FB_BG       0x0000U
 #define FB_FG       0xffffU
+//
+// Both FB_BASE (0xbe000000) and FB_STRIDE (640) are multiples of 8, so every
+// row starts on an 8 byte boundary and a whole row can be moved or filled a
+// UINT64 at a time.
+//
+#define FB_ROW_WORDS  (FB_STRIDE / 8U)
 
 STATIC UINT32   mFbRow;
 STATIC UINT32   mFbCol;
@@ -78,9 +133,27 @@ FbFillSpan (
   )
 {
   volatile UINT16  *Pixel;
+  volatile UINT64  *Word;
+  UINT64           Value;
   UINT32           Index;
 
   Pixel = (volatile UINT16 *)(UINTN)(FB_BASE + (UINT64)Y * FB_STRIDE + (UINT64)X * 2U);
+
+  if ((X == 0) && (Width == FB_WIDTH)) {
+    //
+    // Whole row, 8 byte aligned: fill it with 64 bit stores instead of 320
+    // 16 bit ones.  Same bytes on the panel.
+    //
+    Word  = (volatile UINT64 *)(VOID *)Pixel;
+    Value = ((UINT64)Color << 48) | ((UINT64)Color << 32) |
+            ((UINT64)Color << 16) | (UINT64)Color;
+    for (Index = 0; Index < FB_ROW_WORDS; Index++) {
+      Word[Index] = Value;
+    }
+
+    return;
+  }
+
   for (Index = 0; Index < Width; Index++) {
     Pixel[Index] = Color;
   }
@@ -99,31 +172,43 @@ FbClear (
   }
 }
 
+/**
+  Scroll the panel up by one text row.
+
+  This has to produce exactly the pixels the original per-pixel loop produced:
+  every pixel of the screen moves up by FB_CELL_H scanlines and the bottom
+  FB_CELL_H scanlines become background.  The original cleared a full glyph
+  cell width of columns (FB_COLS * FB_CELL_W == FB_WIDTH pixels) but only for
+  the FB_CELL_W columns it had just written -- the rest of those rows was
+  already background, because nothing but FbGlyph ever sets a pixel to
+  foreground and FbGlyph always writes a complete cell.  So copying whole rows
+  and blanking whole rows is pixel-identical, and it lets each row move as
+  FB_ROW_WORDS 64 bit loads/stores instead of FB_WIDTH 16 bit pairs.
+
+  Cost: 464 rows * 80 word moves = 37120 load+store pairs, versus the original
+  464 * 320 = 148480 load+store pairs, and no separate clear pass over 16 rows.
+**/
 STATIC
 VOID
 FbScroll (
   VOID
   )
 {
-  volatile UINT16  *Dst;
-  volatile UINT16  *Src;
-  UINT32           Count;
-  UINT32           Y;
+  volatile UINT64  *Dst;
+  volatile UINT64  *Src;
+  UINT32           Row;
+  UINT32           Index;
 
-  for (Y = 0; Y < (FB_HEIGHT - FB_CELL_H); Y++) {
-    Dst   = (volatile UINT16 *)(UINTN)(FB_BASE + (UINT64)Y * FB_STRIDE);
-    Src   = (volatile UINT16 *)(UINTN)(FB_BASE + (UINT64)(Y + FB_CELL_H) * FB_STRIDE);
-    Count = FB_WIDTH;
-    while (Count != 0) {
-      *Dst = *Src;
-      Dst++;
-      Src++;
-      Count--;
+  for (Row = FB_CELL_H; Row < FB_HEIGHT; Row++) {
+    Dst = (volatile UINT64 *)(UINTN)(FB_BASE + (UINT64)(Row - FB_CELL_H) * FB_STRIDE);
+    Src = (volatile UINT64 *)(UINTN)(FB_BASE + (UINT64)Row * FB_STRIDE);
+    for (Index = 0; Index < FB_ROW_WORDS; Index++) {
+      Dst[Index] = Src[Index];
     }
   }
 
-  for (Y = FB_HEIGHT - FB_CELL_H; Y < FB_HEIGHT; Y++) {
-    FbFillSpan (0, Y, FB_WIDTH, FB_BG);
+  for (Row = FB_HEIGHT - FB_CELL_H; Row < FB_HEIGHT; Row++) {
+    FbFillSpan (0, Row, FB_WIDTH, FB_BG);
   }
 }
 
@@ -136,9 +221,19 @@ FbGlyph (
   IN UINT16  Fg
   )
 {
-  CONST UINT8  *Bits;
-  UINT32       X;
-  UINT32       Y;
+  CONST UINT8     *Bits;
+  volatile UINT16 *Line;
+  UINT32          X;
+  UINT32          Y;
+
+  //
+  // A cell that is not on the panel is not drawn.  Without this check a wrap
+  // that happened to be latched before a scroll would write past the end of
+  // the framebuffer; the original code had no bound at all.
+  //
+  if ((Col >= FB_COLS) || (Row >= FB_ROWS)) {
+    return;
+  }
 
   if ((Ch < FONT_FIRST) || (Ch > FONT_LAST)) {
     Ch = (UINT8)0x3f;
@@ -146,17 +241,24 @@ FbGlyph (
 
   Bits = &font8x16[(Ch - FONT_FIRST) * 16];
 
+  //
+  // The destination address advances by FB_STRIDE per scanline and by 2 per
+  // column, so it can be carried in a pointer instead of being recomputed from
+  // scratch for each of the 128 pixels.
+  //
+  Line = (volatile UINT16 *)(UINTN)(FB_BASE +
+                                    (UINT64)(Row * FB_CELL_H) * FB_STRIDE +
+                                    (UINT64)(Col * FB_CELL_W) * 2U);
   for (Y = 0; Y < FB_CELL_H; Y++) {
     for (X = 0; X < FB_CELL_W; X++) {
-      volatile UINT16  *Pixel;
-
-      Pixel = (volatile UINT16 *)(UINTN)(FB_BASE + (UINT64)(Row * FB_CELL_H + Y) * FB_STRIDE + (UINT64)(Col * FB_CELL_W + X) * 2U);
       if ((Bits[Y] & (UINT8)(0x80 >> X)) != 0) {
-        *Pixel = Fg;
+        Line[X] = Fg;
       } else {
-        *Pixel = FB_BG;
+        Line[X] = FB_BG;
       }
     }
+
+    Line = (volatile UINT16 *)(UINTN)((UINTN)Line + FB_STRIDE);
   }
 }
 
@@ -224,13 +326,30 @@ UartPutc (
 {
   UINT32  Timeout;
 
-  for (Timeout = 0; Timeout < UART_TX_TIMEOUT; Timeout++) {
-    if ((*(volatile UINT32 *)(UINTN)(UART1_BASE + UART_LSR) & UART_LSR_TX_OVER) != 0) {
-      break;
+  //
+  // One-shot probe.  mUartDead is latched the first time the transmitter never
+  // reports TX_OVER, and from then on this function is a single flag test --
+  // the UART is not polled again for the rest of the boot.
+  //
+  if (!mUartDead) {
+    for (Timeout = 0; Timeout < UART_PROBE_TIMEOUT; Timeout++) {
+      if ((*(volatile UINT32 *)(UINTN)(UART1_BASE + UART_LSR) & UART_LSR_TX_OVER) != 0) {
+        break;
+      }
+    }
+
+    if (Timeout == UART_PROBE_TIMEOUT) {
+      mUartDead = TRUE;
+    } else {
+      *(volatile UINT32 *)(UINTN)(UART1_BASE + UART_TXD) = (UINT32)(UINT8)C;
+      return;
     }
   }
 
-  *(volatile UINT32 *)(UINTN)(UART1_BASE + UART_TXD) = (UINT32)(UINT8)C;
+  //
+  // Dead sink: nothing to write.  The byte is still kept in the ramoops zone
+  // and on the panel by the caller.
+  //
 }
 
 STATIC
@@ -240,11 +359,34 @@ ConsolePublish (
   )
 {
   volatile UINT32  *Header;
+  volatile UINT32  *HeaderDmesg;
+  volatile UINT8   *Prefix;
+  UINT32           Index;
 
-  Header    = (volatile UINT32 *)(UINTN)CONSOLE_ZONE;
+  Header      = (volatile UINT32 *)(UINTN)CONSOLE_ZONE;
+  HeaderDmesg = (volatile UINT32 *)(UINTN)CONSOLE_ZONE_DMESG;
+
+  //
+  // Re-written every publish: the prefix lives outside the ring, so this only
+  // ever stores the same bytes and costs nothing worth counting.
+  //
+  Prefix = (volatile UINT8 *)(UINTN)(CONSOLE_ZONE_DMESG + PRZ_HDR);
+  for (Index = 0; Index < DMESG_PREFIX_LEN; Index++) {
+    Prefix[Index] = (UINT8)DMESG_PREFIX[Index];
+  }
+
   Header[0] = PRZ_SIG;
   Header[1] = mConsoleWrapped ? mConsolePos : 0;
   Header[2] = mConsoleWrapped ? CONSOLE_CAP : mConsolePos;
+
+  //
+  // The kernel de-wraps from the start offset and parses the message header
+  // there, so start stays 0 and the record is always prefix + ring.  After a
+  // wrap that reports only the newest bytes, which keeps both contiguous.
+  //
+  HeaderDmesg[0] = PRZ_SIG;
+  HeaderDmesg[1] = 0;
+  HeaderDmesg[2] = DMESG_PREFIX_LEN + Header[2];
 }
 
 STATIC
@@ -254,21 +396,80 @@ ConsolePutc (
   )
 {
   volatile UINT8  *Data;
-
-  Data = (volatile UINT8 *)(UINTN)(CONSOLE_ZONE + PRZ_HDR);
+  volatile UINT8  *DataDmesg;
 
   if (mConsolePos >= CONSOLE_CAP) {
     mConsolePos      = 0;
     mConsoleWrapped  = TRUE;
   }
 
-  Data[mConsolePos] = (UINT8)C;
+  Data      = (volatile UINT8 *)(UINTN)(CONSOLE_ZONE + PRZ_HDR);
+  DataDmesg = (volatile UINT8 *)(UINTN)(CONSOLE_ZONE_DMESG + PRZ_HDR + DMESG_PREFIX_LEN);
+  Data[mConsolePos]      = (UINT8)C;
+  DataDmesg[mConsolePos] = (UINT8)C;
   mConsolePos++;
 }
 
 /**
-  Reset the persistent RAM header.  Called before the first byte is written so
-  that a previous boot log can never be mistaken for the current one.
+  Take over the log already in the dmesg zone instead of starting over.
+
+  Nothing clears the zone except a cold boot: within one boot every stage that
+  maps this library (SEC first, then each DXE module) constructs it again and
+  lands here with the previous stage's bytes still in place.  Reading the
+  published size back is all it takes to continue writing behind them, so SEC
+  and DXE output end up in one record instead of DXE replacing SEC.
+
+  Header[1] (start) is not consulted: ConsolePublish always writes it as 0, so
+  the record is prefix followed by the ring and the ring length is simply
+  size - DMESG_PREFIX_LEN.
+**/
+STATIC
+VOID
+ConsoleAdopt (
+  VOID
+  )
+{
+  volatile UINT32  *Header;
+  UINT32           Sig;
+  UINT32           Size;
+  UINT32           Pos;
+
+  Header = (volatile UINT32 *)(UINTN)CONSOLE_ZONE_DMESG;
+  Sig    = Header[0];
+  Size   = Header[2];
+
+  if ((Sig != PRZ_SIG) || (Size <= DMESG_PREFIX_LEN)) {
+    //
+    // Nothing recoverable -- a cold boot, or a zone the kernel zapped.
+    //
+    mConsolePos     = 0;
+    mConsoleWrapped = FALSE;
+    return;
+  }
+
+  //
+  // The previous writer stopped exactly where the published size says.  A ring
+  // that reached the capacity had wrapped, which is the state ConsolePutc
+  // would have left mConsoleWrapped in.
+  //
+  Pos = Size - DMESG_PREFIX_LEN;
+  if (Pos >= CONSOLE_CAP) {
+    mConsolePos     = CONSOLE_CAP;
+    mConsoleWrapped = TRUE;
+  } else {
+    mConsolePos     = Pos;
+    mConsoleWrapped = FALSE;
+  }
+}
+
+/**
+  Publish the persistent RAM header at construction time.
+
+  The position comes from ConsoleAdopt, not from zero: within one boot every
+  stage that maps this library (SEC first, then each DXE module) constructs it
+  again, and a reset here would overwrite the previous stage's bytes from
+  offset 0.  On a cold boot the zone holds no valid record and ConsoleAdopt
+  starts at zero, which is the same state a reset would have produced.
 **/
 RETURN_STATUS
 EFIAPI
@@ -276,8 +477,7 @@ SprdDebugSerialPortLibConstructor (
   VOID
   )
 {
-  mConsolePos     = 0;
-  mConsoleWrapped = FALSE;
+  ConsoleAdopt ();
   ConsolePublish ();
   return RETURN_SUCCESS;
 }
@@ -291,8 +491,7 @@ SerialPortInitialize (
   VOID
   )
 {
-  mConsolePos     = 0;
-  mConsoleWrapped = FALSE;
+  ConsoleAdopt ();
   ConsolePublish ();
   return RETURN_SUCCESS;
 }
