@@ -42,5 +42,13 @@ APRIORI DXE {
   INF EmbeddedPkg/SimpleTextInOutSerial/SimpleTextInOutSerial.inf
   INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
   INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
-  INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
+  #
+  # The graphics console driver is deliberately absent from this list.  The E5
+  # panel is 320x480 and the font cell is 8x19, so MaxColumns = 320/8 = 40,
+  # while the driver asserts (MaxColumns >= 80) && (MaxRows >= 25) at line 245
+  # and then dead-loops into the AP watchdog (300s) -- the UEFI spec minimum of
+  # 80 columns can never be met on this panel.  The serial console
+  # (SimpleTextInOutSerial, above) carries the log instead.  Restore this entry
+  # once a 40-column-capable graphics console driver exists.
+  #
 }
