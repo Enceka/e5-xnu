@@ -66,7 +66,7 @@ gMemoryDescriptor[] = {
   // On-chip peripherals
   {"GICD",               0x12000000, 0x00020000, AddDev,  MMAP_IO, UNCACHEABLE,   MmIO,   NS_DEVICE},
   {"GICR",               0x12040000, 0x00100000, AddDev,  MMAP_IO, UNCACHEABLE,   MmIO,   NS_DEVICE},
-  {"UART0-3",            0x20200000, 0x00010000, AddDev,  MMAP_IO, UNCACHEABLE,   MmIO,   NS_DEVICE},
+  {"UART0-3",            0x20200000, 0x00040000, AddDev,  MMAP_IO, UNCACHEABLE,   MmIO,   NS_DEVICE},
   {"EMMC",               0x22200000, 0x00001000, AddDev,  MMAP_IO, UNCACHEABLE,   MmIO,   NS_DEVICE},
   {"SDIO1",              0x22210000, 0x00001000, AddDev,  MMAP_IO, UNCACHEABLE,   MmIO,   NS_DEVICE},
   {"SDIO2 WIFI",         0x22220000, 0x00001000, AddDev,  MMAP_IO, UNCACHEABLE,   MmIO,   NS_DEVICE},
