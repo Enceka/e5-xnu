@@ -95,7 +95,22 @@ collect() {
   need_root
   STAMP=`date +%H%M%S`
   REPORT=$ROOT/dumps/uefi-report-$STAMP.txt
-  priv_out "cat /sys/fs/pstore/console-ramoops-0" > "$REPORT"
+  # The UEFI console publishes into the ramoops *dmesg* zones, not the console
+  # zone: console and pmsg are created with PRZ_FLAG_ZAP_OLD and are wiped on
+  # every Android boot, while the six dmesg zones survive.  Scan them all and
+  # append every non-empty one; fall back to console-ramoops-0 so an image
+  # built before the move still reports something.
+  : > "$REPORT"
+  for f in dmesg-ramoops-0 dmesg-ramoops-1 dmesg-ramoops-2 dmesg-ramoops-3 \
+           dmesg-ramoops-4 dmesg-ramoops-5 console-ramoops-0; do
+    priv_out "cat /sys/fs/pstore/$f" > "$ROOT/dumps/.pstore.tmp" 2>/dev/null
+    if [ -s "$ROOT/dumps/.pstore.tmp" ]; then
+      echo "== source: $f" >> "$REPORT"
+      cat "$ROOT/dumps/.pstore.tmp" >> "$REPORT"
+      echo >> "$REPORT"
+    fi
+  done
+  rm -f "$ROOT/dumps/.pstore.tmp"
   echo "== report: $REPORT (`wc -c < "$REPORT"` bytes)"
   echo "----------------------------------------------------------------"
   cat "$REPORT"
