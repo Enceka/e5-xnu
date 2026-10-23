@@ -370,11 +370,15 @@ adbd cannot run as root in production builds
       `27CFAC88`（ResetArch）安装成功、屏幕显示 DXE 一路跑到 EndOfDxe 转储，
       `E5BringupDxe` 完整执行并主动复位回 LK。日志第 147 行的 GUID 被拦腰截断
       就是证据——写游标 `mConsolePos` 每镜像一份、构造后即陈旧（见 13.3.1）
-- [ ] **DXE 已能跑到 EndOfDxe**：41 descriptors / 7 conventional / 73 MiB free
-      已从屏幕读到。等日志通道修好后重新采集，把这批转储落到文件里
-- [ ] **下一个卡点**：面板 320x480 只能给 40 列，而 `GraphicsConsoleDxe` 断言
-      ≥80 列后死循环，故 BDS 的图形控制台还没通。图形控制台留待做 40 列驱动
-      （见 13.4）
+- [x] **DXE 阶段全部打通**：日志修好后实测 65995 字节 / 1183 行 / 0 处可疑，
+      `E5-BRINGUP` 98 条，`Loading driver` 70 条（35 驱动 ×2），最远到
+      `[Bds] Entry...`。GOP 320x480/16bpp、41 descriptors / 7 conventional /
+      73 MiB free、完整 41 项内存映射都已落盘（见 13.3.2）
+- [ ] **下一个卡点**：BDS 已经进入，但没有可引导目标——`BootManagerMenu` FFS
+      section 不存在，FV 里也没有 UEFI Shell，所以 BDS 无事可做，随后按
+      `PcdE5ResetAtEndOfDxe` 复位回 LK。要往下走必须先给它一个目标
+- [ ] 面板 320x480 只能给 40 列，`GraphicsConsoleDxe` 断言 ≥80 列后死循环，
+      故图形控制台未启用；串口控制台一直正常（见 13.4）
 - [ ] BDS / UFPLoader / DarwinBoot 尚未启用
 - [ ] eMMC 没有 EDK2 host 驱动，`SdDxe`/`EmmcDxe`/`Fat` 先不挂进 FV（M5 处理）
 - [ ] 只有单核跑 DXE（FD 里没有 `ArmPsciMpServicesDxe`），XNU 的 SMP 由 UniXNU 的 ArmCpu 负责
