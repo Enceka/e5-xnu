@@ -74,6 +74,13 @@ READ_LOCK_STATUS   = TRUE
   # there waiting for a key press, which is indistinguishable from a hang.
   INF UMS9621Pkg/Drivers/E5BringupDxe/E5BringupDxe.inf
 
+  # UEFI Shell.  Deliberately here and not in APRIORI.inc / DXE.inc: those two
+  # are the DXE dispatcher's dependency ordering, and the Shell is a
+  # UEFI_APPLICATION that BDS launches by FILE_GUID, never a DXE driver.  It
+  # lands in FvMain so that GetFileDevicePathFromAnyFv can find the file named
+  # by PcdBootManagerMenuFile.
+  INF ShellPkg/Application/Shell/Shell.inf
+
 [FV.FVMAIN_COMPACT]
 FvAlignment        = 8
 ERASE_POLARITY     = 1

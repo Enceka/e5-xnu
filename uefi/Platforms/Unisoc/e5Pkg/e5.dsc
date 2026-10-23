@@ -77,6 +77,23 @@
   gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x23
 
   #
+  # Boot Manager menu: BDS looks this GUID up in the FV and, if it is missing,
+  # logs "BootManagerMenu FFS section can not be found" and registers no boot
+  # option at all.  The value inherited from SiliciumPkg.dsc.inc points at a
+  # file that this platform never puts in its FV, so override it with the UEFI
+  # Shell's FILE_GUID (gUefiShellFileGuid, ShellPkg/Application/Shell/Shell.inf)
+  # and BDS gets a boot target that actually exists.
+  #
+  # EFI_GUID byte layout: Data1/Data2/Data3 are scalars, so they land in memory
+  # little-endian, while Data4 is an array of bytes and is copied verbatim.
+  #   7C04A583 -> 83 A5 04 7C
+  #   9E3E     -> 3E 9E
+  #   4f1c     -> 1C 4F
+  #   AD65-E05268D0B4D1 -> AD 65 E0 52 68 D0 B4 D1
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdBootManagerMenuFile|{ 0x83, 0xA5, 0x04, 0x7C, 0x3E, 0x9E, 0x1C, 0x4F, 0xAD, 0x65, 0xE0, 0x52, 0x68, 0xD0, 0xB4, 0xD1 }
+
+  #
   # SMBIOS.
   #
   gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemManufacturer|"Rongyue"
@@ -101,6 +118,17 @@
   #
   MemoryMapLib|e5Pkg/Library/MemoryMapLib/MemoryMapLib.inf
 
+  #
+  # UEFI Shell.  These three are the only ShellPkg libraries the include chain
+  # does not already name; the rest of what Shell.inf and the command profiles
+  # ask for (HiiLib, UefiHiiServicesLib, FileHandleLib, SortLib,
+  # PeCoffGetEntryPointLib from SiliciumPkg.dsc.inc, OrderedCollectionLib from
+  # MdeLibs.dsc.inc) is inherited and must not be repeated here.
+  #
+  ShellLib|ShellPkg/Library/UefiShellLib/UefiShellLib.inf
+  ShellCommandLib|ShellPkg/Library/UefiShellCommandLib/UefiShellCommandLib.inf
+  HandleParsingLib|ShellPkg/Library/UefiHandleParsingLib/UefiHandleParsingLib.inf
+
 [Components]
   #
   # Display: our own GOP, because SimpleFbDxe rejects anything under 640x475.
@@ -122,3 +150,26 @@
   # during dispatch would hide the EndOfDxe marker.
   #
   e5Pkg/Drivers/E5PayloadDxe/E5PayloadDxe.inf
+
+  #
+  # UEFI Shell: the boot target BDS was missing.  Without it BmBoot finds no
+  # boot option, and PcdE5ResetAtEndOfDxe resets straight back to LK, so the
+  # DXE-after path never gets to run a UEFI image.
+  #
+  # Only the Level1/2/3 command profiles are linked in.  Driver1/Install1/
+  # Debug1/Network1/Network2 would each add another NULL library and drag in
+  # NetLib, BcfgCommandLib and crypto, none of which this board can use yet;
+  # add them one at a time if a missing command ever matters.
+  #
+  # PcdShellLibAutoInitialize|FALSE stops ShellLib from initialising in its
+  # constructor and capturing the console -- Shell installs the Shell and
+  # ShellParameters protocols itself, and the library must not get there first.
+  #
+  ShellPkg/Application/Shell/Shell.inf {
+    <LibraryClasses>
+      NULL|ShellPkg/Library/UefiShellLevel1CommandsLib/UefiShellLevel1CommandsLib.inf
+      NULL|ShellPkg/Library/UefiShellLevel2CommandsLib/UefiShellLevel2CommandsLib.inf
+      NULL|ShellPkg/Library/UefiShellLevel3CommandsLib/UefiShellLevel3CommandsLib.inf
+    <PcdsFixedAtBuild>
+      gEfiShellPkgTokenSpaceGuid.PcdShellLibAutoInitialize|FALSE
+  }
